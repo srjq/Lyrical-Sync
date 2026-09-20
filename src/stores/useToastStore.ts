@@ -20,7 +20,7 @@ export const useToastStore = create<ToastState>((set) => ({
   push: (type, message) => {
     const id = seq++;
     set((s) => ({ toasts: [...s.toasts, { id, type, message }] }));
-    // 에러는 더 오래 표시(읽을 시간 확보)
+    // Display errors longer (ensure time to read)
     const ttl = type === "error" ? 5000 : 2500;
     setTimeout(() => {
       set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) }));
@@ -29,7 +29,7 @@ export const useToastStore = create<ToastState>((set) => ({
   dismiss: (id) => set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) })),
 }));
 
-// React 외부(스토어/유틸)에서 호출하기 위한 헬퍼
+// Helper for calling outside React (stores/utils)
 export const toast = {
   success: (m: string) => useToastStore.getState().push("success", m),
   error: (m: string) => useToastStore.getState().push("error", m),

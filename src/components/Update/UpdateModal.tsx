@@ -8,8 +8,8 @@ export function UpdateModal() {
   const { status, version, body, progress, error, downloadAndInstall, restart, dismiss } = useUpdaterStore();
   const { t } = useI18nStore();
 
-  // AI 정렬·모델/YouTube 다운로드 중엔 업데이트 다운로드·재시작을 막음
-  // (고정 임시 파일 충돌, 강제 종료로 인한 부분 다운로드 손상 방지)
+  // Block update download and restart during AI alignment, model download, or YouTube download
+  // (prevents temp file collisions and partial download corruption from abrupt termination)
   const otherBusy = useBusyStore((s) => s.reasons.size > 0);
   const aiSyncRunning = useLrcStore((s) => s.aiSyncStatus === "running");
   const busy = otherBusy || aiSyncRunning;

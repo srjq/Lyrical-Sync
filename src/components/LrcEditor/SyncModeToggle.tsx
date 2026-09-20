@@ -1,7 +1,7 @@
 import { type Translations } from "../../i18n/translations";
 import { type SyncUnit } from "../../utils/lrcParser";
 
-// 줄 ↔ 글자 동기화 모드 토글 + (글자 모드일 때) 글자/단어 단위 토글.
+// Line <-> Syllable sync mode toggle + (in syllable mode) char/word unit toggle.
 export function SyncModeToggle({
   t, charMode, onSetSyncMode, syncUnit, onUnitChange, isRunning,
 }: {

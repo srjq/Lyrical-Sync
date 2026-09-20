@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from "vitest";
 
-// zustand persist용 최소 localStorage 폴리필 (node 환경)
+// Minimal localStorage polyfill for zustand persist (node environment)
 if (typeof globalThis.localStorage === "undefined") {
   const m = new Map<string, string>();
   globalThis.localStorage = {

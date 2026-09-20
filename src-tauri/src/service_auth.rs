@@ -17,9 +17,9 @@ fn token_path(app: &AppHandle) -> Result<std::path::PathBuf, String> {
 const KEYRING_SERVICE: &str = "Lyrical Sync";
 const KEYRING_USER: &str = "spotify_refresh_token";
 
-// `npm run tauri dev`는 재빌드마다 서명(identity)이 바뀌어 매번 키체인 접근 허가를
-// 새로 물어봄 → 개발 빌드에서는 키체인을 건너뛰고 평문 파일로만 저장(배포용 release
-// 빌드는 서명이 안정적이므로 키체인을 그대로 사용).
+// In `npm run tauri dev`, code signing identity changes on rebuild, repeatedly prompting keychain access.
+// Thus dev builds skip the keychain and save to a plaintext file (release builds have stable identities
+// and use the system keychain directly).
 fn keyring_entry() -> Result<keyring::Entry, keyring::Error> {
     if cfg!(debug_assertions) {
         return Err(keyring::Error::NoEntry);
@@ -116,7 +116,7 @@ pub async fn refresh_spotify_token(
         .map_err(|e| format!("응답 파싱 실패: {e}"))
 }
 
-// 평문 파일 저장 (OS 키체인 사용 불가 시 폴백). unix는 0600.
+// Save plaintext file (fallback when OS keychain unavailable). Permissions 0600 on unix.
 fn save_token_file(app: &AppHandle, token: &str) -> Result<(), String> {
     let path = token_path(app)?;
     if let Some(parent) = path.parent() {
@@ -133,7 +133,7 @@ fn save_token_file(app: &AppHandle, token: &str) -> Result<(), String> {
 
 #[tauri::command]
 pub fn save_refresh_token(token: String, app: AppHandle) -> Result<(), String> {
-    // 1순위: OS 키체인(암호화 저장). 성공 시 기존 평문 파일은 제거(마이그레이션).
+    // Priority 1: OS keychain (encrypted storage). If successful, delete existing plaintext file (migration).
     if let Ok(entry) = keyring_entry() {
         if entry.set_password(&token).is_ok() {
             if let Ok(path) = token_path(&app) {
@@ -142,24 +142,24 @@ pub fn save_refresh_token(token: String, app: AppHandle) -> Result<(), String> {
             return Ok(());
         }
     }
-    // 폴백: 0600 평문 파일
+    // Fallback: 0600 plaintext file
     save_token_file(&app, &token)
 }
 
 #[tauri::command]
 pub fn load_refresh_token(app: AppHandle) -> Result<Option<String>, String> {
-    // 1순위: 키체인
+    // Priority 1: Keychain
     if let Ok(entry) = keyring_entry() {
         match entry.get_password() {
             Ok(t) => {
                 let trimmed = t.trim().to_string();
                 return Ok(if trimmed.is_empty() { None } else { Some(trimmed) });
             }
-            Err(keyring::Error::NoEntry) => {} // 키체인에 없음 → 레거시 파일 확인
-            Err(_) => {}                        // 키체인 사용 불가 → 파일 폴백
+            Err(keyring::Error::NoEntry) => {} // Not in keychain -> check legacy file
+            Err(_) => {}                        // Keychain unavailable -> file fallback
         }
     }
-    // 폴백/레거시: 평문 파일
+    // Fallback/legacy: plaintext file
     let path = token_path(&app)?;
     if !path.exists() {
         return Ok(None);
@@ -216,7 +216,7 @@ pub async fn start_oauth_listener(app: AppHandle) -> Result<(), String> {
 
 #[tauri::command]
 pub fn clear_refresh_token(app: AppHandle) -> Result<(), String> {
-    // 키체인 + 레거시 파일 모두 제거
+    // Remove both keychain entry and legacy file
     if let Ok(entry) = keyring_entry() {
         let _ = entry.delete_credential();
     }
@@ -225,4 +225,15 @@ pub fn clear_refresh_token(app: AppHandle) -> Result<(), String> {
         std::fs::remove_file(&path).map_err(|e| format!("토큰 삭제 실패: {e}"))?;
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_keyring_construction() {
+        let entry = keyring::Entry::new(KEYRING_SERVICE, "test_user");
+        assert!(entry.is_ok(), "Keyring entry should be constructible: {:?}", entry.err());
+    }
 }

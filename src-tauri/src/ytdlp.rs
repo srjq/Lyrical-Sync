@@ -70,8 +70,12 @@ pub async fn download_ytdlp(app: AppHandle) -> Result<(), String> {
 
     #[cfg(target_os = "windows")]
     let (remote_name, local_name) = ("yt-dlp.exe", "yt-dlp.exe");
-    #[cfg(not(target_os = "windows"))]
+    #[cfg(target_os = "macos")]
     let (remote_name, local_name) = ("yt-dlp_macos", "yt-dlp");
+    #[cfg(target_os = "linux")]
+    let (remote_name, local_name) = ("yt-dlp_linux", "yt-dlp");
+    #[cfg(not(any(target_os = "windows", target_os = "macos", target_os = "linux")))]
+    let (remote_name, local_name) = ("yt-dlp", "yt-dlp");
 
     let url = format!(
         "https://github.com/yt-dlp/yt-dlp/releases/latest/download/{}",
@@ -137,8 +141,8 @@ pub async fn download_ytdlp(app: AppHandle) -> Result<(), String> {
         }
     }
 
-    // 무결성 검증: 같은 릴리즈의 SHA2-256SUMS에서 자산 해시를 받아 대조.
-    // SUMS를 받을 수 있으면 엄격히 검증(불일치=실패), 못 받으면 best-effort로 통과.
+    // Integrity check: fetch asset hash from SHA2-256SUMS of the same release and compare.
+    // If SUMS can be fetched, verify strictly (mismatch=failure); if not fetchable, pass as best-effort.
     let actual = format!("{:x}", hasher.finalize());
     let expected: Option<String> = async {
         let r = client
@@ -273,8 +277,8 @@ pub async fn ytdlp_load_audio(
 
     use tokio::io::{AsyncBufReadExt, BufReader};
 
-    // stderr는 실패 원인 파악용으로 병행해서 끝까지 비워야 한다(안 읽으면 파이프가 차서
-    // 자식 프로세스가 멈출 수 있음). 마지막 몇 줄만 보관해 에러 메시지에 붙인다.
+    // Drain stderr to the end concurrently for failure diagnosis (unread pipe can fill up and block child process).
+    // Keep the last few lines to append to error messages.
     let stderr_tail = std::sync::Arc::new(std::sync::Mutex::new(Vec::<String>::new()));
     let stderr_tail_c = stderr_tail.clone();
     let stderr_task = tokio::spawn(async move {

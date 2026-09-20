@@ -29,7 +29,7 @@ export function LrcLibModal({ onClose }: { onClose: () => void }) {
   const [syncedOnly, setSyncedOnly] = useState(false);
   const [plainOnly, setPlainOnly] = useState(false);
 
-  // 가사 종류 필터 (체크 조합에 따라). 정렬은 sortByAccuracy에서 동기화 우선 처리됨.
+  // Lyrics filter based on checked types. Sorting prioritizes synced lyrics in sortByAccuracy.
   const filtered = useMemo(() => {
     return results.filter((r) => {
       const type = r.syncedLyrics ? "synced" : r.plainLyrics ? "plain" : "none";
@@ -48,7 +48,7 @@ export function LrcLibModal({ onClose }: { onClose: () => void }) {
     setStatus("loading");
     try {
       const raw = await lrclibSearch(q);
-      if (id !== reqId.current) return; // 더 최신 검색이 있으면 폐기
+      if (id !== reqId.current) return; // Discard if newer query in flight
       setResults(sortByAccuracy(raw, q));
       setStatus("done");
     } catch {
@@ -58,7 +58,7 @@ export function LrcLibModal({ onClose }: { onClose: () => void }) {
     }
   };
 
-  // 열릴 때 메타데이터가 있으면 자동 검색
+  // Auto-search if metadata is present when opened
   useEffect(() => {
     if (metadata.title.trim() || metadata.artist.trim() || metadata.album.trim()) {
       runSearch({ title: metadata.title, artist: metadata.artist, album: metadata.album });
@@ -66,7 +66,7 @@ export function LrcLibModal({ onClose }: { onClose: () => void }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ESC: 미리보기 먼저 닫고, 없으면 모달 닫기
+  // ESC: close preview first if open, otherwise close modal
   useEffect(() => {
     const h = (e: KeyboardEvent) => {
       if (e.key !== "Escape") return;
@@ -99,7 +99,7 @@ export function LrcLibModal({ onClose }: { onClose: () => void }) {
           <button onClick={onClose} aria-label={t.close} className="text-zinc-500 hover:text-white transition-colors text-lg leading-none">✕</button>
         </div>
 
-        {/* 검색 필드 */}
+        {/* Search fields */}
         <div className="px-5 py-3 border-b border-zinc-800 shrink-0 flex flex-col gap-2">
           <div className="grid grid-cols-3 gap-2">
             <Field label={t.lrclib.fieldTitle} value={title} onChange={setTitle} onEnter={() => runSearch({ title, artist, album })} />
@@ -122,7 +122,7 @@ export function LrcLibModal({ onClose }: { onClose: () => void }) {
           </div>
         </div>
 
-        {/* 결과 리스트 */}
+        {/* Result list */}
         <div className="flex-1 overflow-y-auto px-3 py-2">
           {status === "loading" && <p className="text-center text-zinc-500 text-sm py-8">{t.lrclib.searching}</p>}
           {status === "error" && <p className="text-center text-rose-400 text-sm py-8">{t.lrclib.error}</p>}
@@ -141,7 +141,7 @@ export function LrcLibModal({ onClose }: { onClose: () => void }) {
         </div>
       </div>
 
-      {/* 미리보기: 동일 사이즈로 덮는 추가 팝업 */}
+      {/* Preview: popup overlay covering with identical size */}
       {preview && (
         <div
           className="fixed inset-0 z-[70] flex items-center justify-center bg-black/70 backdrop-blur-sm"

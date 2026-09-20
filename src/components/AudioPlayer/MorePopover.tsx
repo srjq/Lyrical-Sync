@@ -1,7 +1,7 @@
 import { type Translations } from "../../i18n/translations";
 import { LoopIcon, MarkerIcon, SpectrogramIcon } from "./icons";
 
-// 재생 컨트롤 "더보기" 팝오버 내용: 파일 전체 반복·가사 마커·스펙트로그램 토글 + 배속 조절.
+// "More" popover content: loop entire track, lyric markers, spectrogram toggle, and playback rate.
 export function MorePopover({
   t, isLooping, onToggleLoop, showMarkers, onToggleMarkers, showSpectrogram, onToggleSpectrogram,
   playbackRate, speedMin, speedMax, onSpeedDown, onSpeedUp,
@@ -59,7 +59,7 @@ export function MorePopover({
   );
 }
 
-// 팝오버 내 토글 버튼 스타일
+// Toggle button style within popover
 function popToggleCls(active: boolean): string {
   return [
     "w-8 h-8 flex items-center justify-center rounded-lg transition-colors",

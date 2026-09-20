@@ -26,16 +26,60 @@
   "bundle": {
     "active": true,
     "targets": "all",
+    "category": "Music",
+    "shortDescription": "Desktop app for creating, syncing, and editing .lrc lyric files",
+    "longDescription": "Lyrical Sync is a desktop app for creating, syncing, and editing .lrc (LRC) lyric files with character/word-level enhanced LRC timing, AI auto-alignment, and audio visualization.",
+    "copyright": "Copyright (c) 2026 Tsukimori Ahri",
+    "license": "MIT",
+    "fileAssociations": [
+      {
+        "ext": ["lrc"],
+        "name": "LRC Lyrics",
+        "description": "LRC lyric file",
+        "mimeType": "text/x-lrc"
+      },
+      {
+        "ext": ["srt"],
+        "name": "SubRip Subtitle",
+        "description": "SubRip subtitle file",
+        "mimeType": "application/x-subrip"
+      }
+    ],
     "resources": {
       "resources/mediaremote-adapter": "mediaremote-adapter"
     },
     "icon": [
       "icons/32x32.png",
+      "icons/64x64.png",
       "icons/128x128.png",
       "icons/128x128@2x.png",
+      "icons/icon.png",
       "icons/icon.icns",
       "icons/icon.ico"
     ],
+    "linux": {
+      "deb": {
+        "depends": [
+          "libwebkit2gtk-4.1-0 | libwebkit2gtk-4.0-37",
+          "libgtk-3-0",
+          "libayatana-appindicator3-1",
+          "librsvg2-2",
+          "libssl3 | libssl1.1"
+        ],
+        "section": "sound"
+      },
+      "rpm": {
+        "depends": [
+          "webkit2gtk4.1",
+          "gtk3",
+          "openssl-libs",
+          "libappindicator-gtk3"
+        ]
+      },
+      "appimage": {
+        "bundleMediaFramework": true
+      }
+    },
     "macOS": {
       "dmg": {
         "background": "dmg/dmg-background.png",

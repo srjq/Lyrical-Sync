@@ -30,8 +30,8 @@ interface TokenResponse {
 
 // Module-level RAF handle — not stored in Zustand since it doesn't drive UI
 let interpolationRaf: number | null = null;
-// 진행 중인 토큰 갱신 promise — 동시 ensureToken 호출이 같은 refresh 토큰으로
-// 중복 갱신해 로테이팅 토큰이 무효화(invalid_grant)되는 레이스를 방지.
+// In-flight token refresh promise — prevents concurrent ensureToken calls from using same refresh token
+// and causing rotating token invalidation (invalid_grant) race conditions.
 let refreshPromise: Promise<void> | null = null;
 
 interface ServiceState {
@@ -44,7 +44,7 @@ interface ServiceState {
 
   // SDK / playback
   deviceId: string | null;
-  /** 최근 Web Playback SDK 오류(초기화/인증/계정/재생). null=정상 */
+  /** Recent Web Playback SDK error (initialization/auth/account/playback). null = normal */
   playerError: string | null;
   setPlayerError: (msg: string | null) => void;
   isReady: boolean;
@@ -79,7 +79,7 @@ interface ServiceState {
   playTrack: (uri: string) => Promise<void>;
   pausePlayback: () => Promise<void>;
   fetchCurrentlyPlaying: () => Promise<SpotifyTrack | null>;
-  // 기기 선택
+  // Select device
   fetchDevices: () => Promise<SpotifyDevice[]>;
   transferToDevice: (deviceId: string, play: boolean) => Promise<void>;
 
@@ -168,7 +168,7 @@ export const useServiceStore = create<ServiceState>()((set, get) => ({
   },
 
   refreshAccessToken: async () => {
-    // 이미 갱신 중이면 그 promise를 공유(중복 갱신 방지)
+    // Share promise if refresh is already in flight (prevents duplicate refresh)
     if (refreshPromise) return refreshPromise;
     refreshPromise = (async () => {
       try {
@@ -183,8 +183,8 @@ export const useServiceStore = create<ServiceState>()((set, get) => ({
             clientId,
           });
         } catch (e) {
-          // 리프레시 토큰 만료/취소(invalid_grant) → 저장 토큰 폐기 + 로그아웃해 재로그인 유도.
-          // 재시도하지 않음(Spotify 권장 처리). 2026-07-20부터 리프레시 토큰은 6개월 후 만료.
+          // Refresh token expired/revoked (invalid_grant) -> discard stored token and logout to prompt re-login.
+          // Do not retry (Spotify recommended handling). Refresh tokens expire after 6 months starting 2026-07-20.
           if (String(e).includes("invalid_grant")) {
             get().logout();
           }
@@ -275,7 +275,7 @@ export const useServiceStore = create<ServiceState>()((set, get) => ({
       _lastStateTimestamp: Date.now(),
     });
 
-    // Spotify 모드일 때만 문서(가사 위치·메타데이터)에 반영. 파일/유튜브 모드에선 무시.
+    // Apply to document (lyric position, metadata) only in Spotify mode. Ignore in file/YouTube modes.
     const inSpotifyMode = useSettingsStore.getState().spotifyMode;
     if (isPlaying) {
       get()._startInterpolation();
@@ -289,18 +289,18 @@ export const useServiceStore = create<ServiceState>()((set, get) => ({
         title: track.name,
         artist: track.artists.map((a) => a.name).join(", "),
         album: track.album.name,
-      }, true); // 서비스 자동 동기화 → dirty 미표시
+      }, true); // Service auto-sync -> do not mark as dirty
     }
   },
 
   transferPlaybackToApp: async () => {
-    // SDK 'ready'가 아직 안 왔을 수 있으니 deviceId를 잠깐 대기(최대 ~3초)
+    // Wait briefly for deviceId since SDK ready might not have arrived yet (up to ~3s)
     let deviceId = get().deviceId;
     for (let i = 0; i < 12 && !deviceId; i++) {
       await new Promise((r) => setTimeout(r, 250));
       deviceId = get().deviceId;
     }
-    if (!deviceId) return; // SDK 기기 미준비(playerError 참고) → 기존 기기 유지
+    if (!deviceId) return; // SDK device not ready (see playerError) -> keep existing device
     const token = await get().ensureToken();
     await fetch("https://api.spotify.com/v1/me/player", {
       method: "PUT",

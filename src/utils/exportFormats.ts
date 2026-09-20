@@ -1,7 +1,7 @@
 import { LrcDocument, LrcLine } from "../types/lrc";
 
-// 타임스탬프 있는 줄을 자막 cue로 변환. 빈 줄(text:"")은 직전 cue의 종료 경계로만 사용.
-// (srtConverter와 동일한 규칙 — start=줄 시각, end=다음 시각 줄/총 길이/+4초)
+// Convert stamped lines to subtitle cues. Empty lines (text:"") only serve as end boundary for preceding cue.
+// (Same rule as srtConverter — start=line time, end=next timestamp line/total length/+4s)
 interface Cue { start: number; end: number; line: LrcLine; }
 
 function buildCues(doc: LrcDocument, lastCueEnd?: number): Cue[] {
@@ -13,7 +13,7 @@ function buildCues(doc: LrcDocument, lastCueEnd?: number): Cue[] {
   const cues: Cue[] = [];
   for (let i = 0; i < timed.length; i++) {
     const line = timed[i];
-    if (line.text.trim() === "") continue; // 빈 줄 = 경계 전용
+    if (line.text.trim() === "") continue; // Empty line = boundary only
     const start = line.timestamp as number;
     const next = timed[i + 1];
     let end: number;
@@ -28,13 +28,13 @@ function buildCues(doc: LrcDocument, lastCueEnd?: number): Cue[] {
 const p2 = (n: number) => String(n).padStart(2, "0");
 const p3 = (n: number) => String(n).padStart(3, "0");
 
-// WebVTT 시간: HH:MM:SS.mmm
+// WebVTT time format: HH:MM:SS.mmm
 function vttTime(seconds: number): string {
   const ms = Math.max(0, Math.round(seconds * 1000));
   return `${p2(Math.floor(ms / 3600000))}:${p2(Math.floor(ms / 60000) % 60)}:${p2(Math.floor(ms / 1000) % 60)}.${p3(ms % 1000)}`;
 }
 
-// 글자/단어 동기화가 있으면 VTT 인라인 타임스탬프(<HH:MM:SS.mmm>)로 카라오케 표현
+// If syllable/word sync is present, represent karaoke via VTT inline timestamps (<HH:MM:SS.mmm>)
 function vttText(line: LrcLine): string {
   if (line.syllables?.some((s) => s.time !== null)) {
     return line.syllables
@@ -52,13 +52,13 @@ export function serializeVtt(doc: LrcDocument, lastCueEnd?: number): string {
   return `WEBVTT\n\n${body}\n`;
 }
 
-// ASS 시간: H:MM:SS.cc (센티초)
+// ASS time format: H:MM:SS.cc (centiseconds)
 function assTime(seconds: number): string {
   const cs = Math.max(0, Math.round(seconds * 100));
   return `${Math.floor(cs / 360000)}:${p2(Math.floor(cs / 6000) % 60)}:${p2(Math.floor(cs / 100) % 60)}.${p2(cs % 100)}`;
 }
 
-// ASS 텍스트: 글자 동기화가 있으면 \k(센티초 지속) 카라오케 태그로
+// ASS text: if syllable sync is present, emit with \k (centisecond duration) karaoke tags
 function assText(line: LrcLine, cueEnd: number): string {
   const syl = line.syllables;
   if (syl?.some((s) => s.time !== null)) {

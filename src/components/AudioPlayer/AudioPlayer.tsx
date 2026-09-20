@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useCallback, useMemo, lazy, Suspense } from "react";
 import WaveSurfer from "wavesurfer.js";
 import RegionsPlugin from "wavesurfer.js/dist/plugins/regions.esm.js";
-// 스펙트로그램 플러그인(~36KB)은 토글로 켰을 때만 필요 → 동적 임포트로 초기 번들에서 제외
+// Spectrogram plugin (~36KB) is only needed when toggled on -> dynamically imported to exclude from initial bundle
 import { invoke } from "@tauri-apps/api/core";
 import { useLrcStore } from "../../stores/useLrcStore";
 import { useShallow } from "zustand/react/shallow";
@@ -20,7 +20,7 @@ import { SeekBar } from "./SeekBar";
 import { NoTrackAlert } from "./NoTrackAlert";
 import { useYouTubeLoad } from "./useYouTubeLoad";
 import { TransportControls } from "./TransportControls";
-// YouTube 모드일 때만 필요 → 지연 로드(초기 번들 절감)
+// Only needed in YouTube mode -> lazy-loaded to reduce initial bundle
 const YouTubeModal = lazy(() => import("./YouTubeModal").then((m) => ({ default: m.YouTubeModal })));
 import { VolumeIcon, ZoomIcon, FileGlyph, YouTubeGlyph, YouTubeLinkIcon } from "./icons";
 
@@ -68,7 +68,7 @@ export function AudioPlayer({ onSpotifySearch, onSpotifyNoClientId }: AudioPlaye
   const [viewMode, setViewMode] = useState<"waveform" | "bar">("waveform");
   const [showNoTrackAlert, setShowNoTrackAlert] = useState(false);
 
-  // 자체 로컬 상태(currentTimeLocal 등)로 UI를 그리므로 스토어 currentTime은 구독하지 않음
+  // Renders UI via local state (currentTimeLocal, etc.), so does not subscribe to store currentTime
   const { audioPath, setCurrentTime, setIsPlaying, setDuration, openAudio, setAudioPath } = useLrcStore(
     useShallow((s) => ({
       audioPath: s.audioPath, setCurrentTime: s.setCurrentTime, setIsPlaying: s.setIsPlaying,
@@ -105,23 +105,23 @@ export function AudioPlayer({ onSpotifySearch, onSpotifyNoClientId }: AudioPlaye
       normalize: true,
       interact: true,
     });
-    // Windows의 가로 스크롤바가 파형 하단을 가리는 문제 방지
+    // Prevent horizontal scrollbar on Windows from obscuring bottom of waveform
     ws.getWrapper().classList.add("ws-scroll");
 
-    // 가사 타임스탬프 마커 플러그인
+    // Lyric timestamp marker plugin
     const regions = ws.registerPlugin(RegionsPlugin.create());
     regionsRef.current = regions;
 
-    // 파형의 가사 마커 클릭 → 해당 줄 선택 (에디터가 activeLineId 변경에 따라 자동 스크롤)
+    // Click lyric marker on waveform -> select line (editor auto-scrolls on activeLineId change)
     regions.on("region-clicked", (region, e) => {
       if (typeof region.id === "string" && region.id.startsWith("lyric:")) {
-        e.stopPropagation(); // 파형 탐색(시크) 방지
+        e.stopPropagation(); // Prevent waveform seek
         useLrcStore.getState().setActiveLineId(region.id.slice("lyric:".length));
       }
     });
 
-    // Spotify/기기 감지 모드에선 로컬 파형이 전역 재생상태(currentTime/isPlaying/duration)를
-    // 덮어쓰지 않도록 차단(해당 모드가 단일 소스). 로컬 UI 상태(*Local)는 항상 갱신.
+    // In Spotify/device mode, prevent local waveform from overwriting global playback state
+    // (currentTime/isPlaying/duration). Local UI state (*Local) is always updated.
     const inService = () => {
       const settings = useSettingsStore.getState();
       return (useServiceStore.getState().isLoggedIn && settings.spotifyMode) || settings.deviceMode;
@@ -132,13 +132,13 @@ export function AudioPlayer({ onSpotifySearch, onSpotifyNoClientId }: AudioPlaye
       setDurationLocal(d);
       if (!inService()) setDuration(d);
       setIsAudioReady(true);
-      // 글자 동기화 레인 파형용 정규화 peaks 캐시
+      // Normalized peaks cache for syllable sync lane waveform
       try {
         peaksRef.current = ws.exportPeaks({ channels: 1, maxLength: 4000 })[0] ?? null;
       } catch {
         peaksRef.current = null;
       }
-      // 새 오디오 로드 시 미디어 엘리먼트가 배속을 1.0으로 초기화하므로 재적용
+      // Re-apply playback rate because media element resets to 1.0 on loading new audio
       if (playbackRateRef.current !== 1.0) {
         ws.setPlaybackRate(playbackRateRef.current);
       }
@@ -146,8 +146,8 @@ export function AudioPlayer({ onSpotifySearch, onSpotifyNoClientId }: AudioPlaye
     ws.on("audioprocess", (t) => {
       setCurrentTimeLocal(t);
       if (!inService()) setCurrentTime(t);
-      // 줄 반복: 반복 대상 줄의 구간(다음 스탬프 줄 시작, 없으면 끝까지) 끝에 닿으면
-      // 줄 시작으로 되돌아감. 매 프레임 스토어에서 직접 읽어 클로저 staleness 회피.
+      // Line repeat: loops back to line start when reaching end of repeated interval.
+      // Read directly from store each frame to prevent closure staleness.
       const { loopLineId, doc } = useLrcStore.getState();
       if (loopLineId) {
         const idx = doc.lines.findIndex((l) => l.id === loopLineId);
@@ -217,16 +217,15 @@ export function AudioPlayer({ onSpotifySearch, onSpotifyNoClientId }: AudioPlaye
 
   const blobUrlRef = useRef<string | null>(null);
 
-  // 언마운트 시 마지막 Blob URL 해제 (경로 변경 시엔 아래 로드 effect가 직전 URL을 해제)
+  // Revoke last Blob URL on unmount (load effect below revokes previous URL on path changes)
   useEffect(() => () => {
     if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current);
   }, []);
 
   useEffect(() => {
-    // Spotify/기기 감지 모드에서는 로컬 오디오를 재생하지 않는다. audioPath는 파일 모드
-    // 때의 값이 모드 전환 후에도 스토어에 남아있을 수 있어(전환 시 일부러 안 지움 —
-    // 파일 모드로 돌아오면 다시 쓰도록), 여기서 걸러야 크래시 복구 후 엉뚱한 파일을
-    // 다시 로드 시도하는 걸 막을 수 있다.
+    // Local audio is not played in Spotify/device modes. audioPath may retain its file-mode value
+    // across mode switches (intentionally retained to reuse when switching back); filtering here
+    // avoids erroneously attempting to load the old file upon recovery.
     if (!wsRef.current || !audioPath || spotifyMode || deviceMode) return;
     let cancelled = false;
 
@@ -245,7 +244,7 @@ export function AudioPlayer({ onSpotifySearch, onSpotifyNoClientId }: AudioPlaye
       blobUrlRef.current = url;
       return wsRef.current.load(url);
     }).catch((e) => {
-      // 새 로드로 인한 중단(AbortError)은 무시, 실제 디코드/읽기 실패만 알림
+      // Ignore cancellation from new load (AbortError); notify only genuine decode/read errors
       if (cancelled || (e && (e as Error).name === "AbortError")) return;
       toast.error(useI18nStore.getState().t.toast.audioLoadFailed);
     });
@@ -253,10 +252,10 @@ export function AudioPlayer({ onSpotifySearch, onSpotifyNoClientId }: AudioPlaye
     return () => { cancelled = true; };
   }, [audioPath, spotifyMode, deviceMode]);
 
-  // 오디오 열면 파일 태그(ID3 등)에서 메타데이터를 읽어 비어 있는 필드만 자동 채움
+  // When opening audio, read metadata tags (ID3, etc.) to automatically populate empty fields
   useEffect(() => {
-    // 위와 동일한 이유로 Spotify/기기 모드에서는 건너뜀 — 안 그러면 크래시 복구 후
-    // 남아있던 예전 로컬 파일의 태그로 지금 작업 중인 문서의 메타데이터가 덮어써질 수 있다.
+    // Skip in Spotify/device mode for the same reason — otherwise after crash recovery,
+    // tags from previous local files could overwrite metadata of active document.
     if (!audioPath || spotifyMode || deviceMode) return;
     let cancelled = false;
     invoke<{ title: string; artist: string; album: string }>("read_audio_metadata", { path: audioPath })
@@ -273,7 +272,7 @@ export function AudioPlayer({ onSpotifySearch, onSpotifyNoClientId }: AudioPlaye
     return () => { cancelled = true; };
   }, [audioPath, spotifyMode, deviceMode]);
 
-  // 오디오 로드 완료 시 현재 zoom 값 적용 (슬라이더 조작 중 zoom은 debounce로 직접 처리)
+  // Apply current zoom upon audio load completion (slider adjustments debounce directly)
   useEffect(() => {
     if (!wsRef.current || !isAudioReady) return;
     wsRef.current.zoom(zoomLevelToPixels(zoomLevel));
@@ -283,21 +282,21 @@ export function AudioPlayer({ onSpotifySearch, onSpotifyNoClientId }: AudioPlaye
     wsRef.current?.setVolume(volume);
   }, [volume]);
 
-  // 마커는 줄 id·타임스탬프·줄번호(인덱스)에만 의존 → 텍스트 편집(타임스탬프 불변)으로는
-  // region을 재생성하지 않도록 시그니처로 의존성을 좁힘(키 입력마다 전체 region 재생성 방지).
+  // Markers depend only on line ID, timestamp, and line number -> text edits without timestamp change
+  // do not recreate regions, narrowing dependencies to prevent recreation on every keystroke.
   const markerSig = useMemo(
     () => lines.map((l, i) => (l.timestamp !== null ? `${l.id}:${l.timestamp}:${i}` : "")).filter(Boolean).join("|"),
     [lines]
   );
 
-  // 가사 타임스탬프 마커를 파형에 동기화
+  // Synchronize lyric timestamp markers to waveform
   useEffect(() => {
     const regions = regionsRef.current;
     if (!regions || !isAudioReady) return;
     regions.clearRegions();
     if (!showMarkers) return;
-    // 마커는 순수 시각 표시 — 파형 클릭(탐색)을 가로막지 않도록 pointer-events 해제하되,
-    // 가사 마커만 clickable로 두어 클릭 시 해당 줄을 선택할 수 있게 함.
+    // Markers are purely visual — pointer-events disabled to avoid blocking waveform seek,
+    // Set lyric markers as clickable so clicking selects the corresponding line.
     lines.forEach((l, i) => {
       if (l.timestamp === null) return;
       const isActive = l.id === activeLineId;
@@ -313,8 +312,8 @@ export function AudioPlayer({ onSpotifySearch, onSpotifyNoClientId }: AudioPlaye
         r.element.style.cursor = "pointer";
         r.element.style.overflow = "visible";
         r.element.classList.add("lyric-marker");
-        // 상단에 줄 번호(에디터 행 번호와 동일, 1-based). 활성 줄은 항상,
-        // 비활성 줄은 겹침 방지를 위해 마커 호버 시에만 표시.
+        // Line number at top (1-based, matches editor line number). Active line always shown;
+        // inactive lines shown only on hover to prevent overlapping clutter.
         const label = document.createElement("div");
         label.textContent = String(i + 1);
         label.className = isActive ? "lyric-marker-num" : "lyric-marker-num dim";
@@ -328,12 +327,12 @@ export function AudioPlayer({ onSpotifySearch, onSpotifyNoClientId }: AudioPlaye
         r.element.appendChild(label);
       }
     });
-    // lines/activeLineId는 closure 최신값 사용. markerSig(마커 위치 변경)에만 재생성 →
-    // 활성 줄만 바뀔 땐 아래 별도 effect가 스타일만 토글(전체 region 재생성 회피).
+    // lines/activeLineId use latest closure values. Recreate only on markerSig (marker movement) ->
+    // when only active line changes, effect below toggles styling without recreating regions.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [markerSig, isAudioReady, showMarkers]);
 
-  // 활성 줄 변경: region을 다시 만들지 않고 색/라벨 스타일만 갱신
+  // Active line change: update color and label styles without recreating regions
   useEffect(() => {
     const regions = regionsRef.current;
     if (!regions || !isAudioReady || !showMarkers) return;
@@ -349,8 +348,8 @@ export function AudioPlayer({ onSpotifySearch, onSpotifyNoClientId }: AudioPlaye
     });
   }, [activeLineId, isAudioReady, showMarkers, markerSig]);
 
-  // 스펙트로그램 플러그인(~36KB)은 켰을 때만 동적 임포트+생성(초기 번들·FFT 계산 낭비 방지),
-  // 끄면 destroy()로 완전히 정리
+  // Spectrogram plugin (~36KB) is dynamically imported only when enabled (avoids initial bundle and FFT overhead),
+  // completely cleaned up via destroy() when turned off
   useEffect(() => {
     const ws = wsRef.current;
     if (!ws || !showSpectrogram || !spectrogramContainerRef.current) return;
@@ -423,7 +422,7 @@ export function AudioPlayer({ onSpotifySearch, onSpotifyNoClientId }: AudioPlaye
     try {
       const track = await fetchCurrentlyPlaying();
       if (track) {
-        await activateSpotifyPlayer(); // 사용자 제스처에서 오디오 잠금 해제(SDK 기기로 재생 위함)
+        await activateSpotifyPlayer(); // Unlock audio from user gesture (for Web Playback SDK device playback)
         await transferPlaybackToApp();
       } else setShowNoTrackAlert(true);
     } catch { setShowNoTrackAlert(true); }
@@ -491,7 +490,7 @@ export function AudioPlayer({ onSpotifySearch, onSpotifyNoClientId }: AudioPlaye
         />
       )}
 
-      {/* 시간 표시 (파형 모드에서만) */}
+      {/* Time display (waveform mode only) */}
       {viewMode === "waveform" && (
         <div className="flex justify-between text-xs text-zinc-400 font-mono px-1">
           <span>{formatDisplayTime(currentTime)}</span>
@@ -519,7 +518,7 @@ export function AudioPlayer({ onSpotifySearch, onSpotifyNoClientId }: AudioPlaye
         onSpeedUp={() => adjustSpeed(1)}
       />
 
-      {/* 열기 버튼 */}
+      {/* Open button */}
       {spotifyMode ? (
         !isLoggedIn ? (
           <button
@@ -561,7 +560,7 @@ export function AudioPlayer({ onSpotifySearch, onSpotifyNoClientId }: AudioPlaye
         </button>
       )}
 
-      {/* 볼륨 (스피커 아이콘 + 슬림 슬라이더) */}
+      {/* Volume (speaker icon + slim slider) */}
       <div className="flex items-center gap-2.5 text-zinc-400" title={`${t.volume} ${Math.round(volume * 100)}%`}>
         <span className="shrink-0"><VolumeIcon /></span>
         <input
@@ -573,7 +572,7 @@ export function AudioPlayer({ onSpotifySearch, onSpotifyNoClientId }: AudioPlaye
         <span className="shrink-0 w-9 text-right text-xs text-zinc-400 tabular-nums">{Math.round(volume * 100)}%</span>
       </div>
 
-      {/* 줌 + 뷰 토글 */}
+      {/* Zoom + view toggle */}
       <div className="flex items-center gap-2.5 text-zinc-400">
         {viewMode === "waveform" ? (
           <>

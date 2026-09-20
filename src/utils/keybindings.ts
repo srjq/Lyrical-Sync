@@ -1,5 +1,5 @@
-// 사용자 재설정 가능한 전역 단축키. Cmd/Ctrl 조합(실행취소/찾기)·Escape 등은
-// 시스템 예약으로 두고, 단일 키(수식자 없음)만 바인딩 대상으로 한다.
+// User-configurable global shortcuts. Cmd/Ctrl combos (undo/find), Escape, etc.
+// are reserved for the system; only single keys (without modifiers) are bindable.
 
 export type KeyAction =
   | "skipBack5" | "skipBack1" | "playPause" | "skipFwd1" | "skipFwd5" | "stop"
@@ -9,7 +9,7 @@ export const KEY_ACTIONS: KeyAction[] = [
   "skipBack5", "skipBack1", "playPause", "skipFwd1", "skipFwd5", "stop", "stamp", "prevLine",
 ];
 
-// 재생 트랜스포트 동작(줄/글자 모드 공통, 입력창 외에서 동작)
+// Playback transport actions (shared across line/syllable modes, active outside input elements)
 export const PLAYBACK_ACTIONS: KeyAction[] = [
   "skipBack5", "skipBack1", "playPause", "skipFwd1", "skipFwd5", "stop",
 ];
@@ -25,23 +25,23 @@ export const DEFAULT_KEYBINDINGS: Record<KeyAction, string> = {
   prevLine: "Backspace",
 };
 
-// 바인딩 불가(시스템 예약) 키
+// Non-bindable (system reserved) keys
 export const RESERVED_CODES = new Set(["Escape", "Tab"]);
 
-// 넘패드 숫자를 일반 숫자와 동일 취급(기존 동작 유지)
+// Treat numpad digits same as standard digits (preserves existing behavior)
 function normalizeCode(code: string): string {
   const m = /^Numpad(\d)$/.exec(code);
   return m ? `Digit${m[1]}` : code;
 }
 
-// 저장된 바인딩을 기본값으로 보정(키 누락 방지)
+// Normalize stored bindings against defaults (prevents missing keys)
 export function normalizeKeybindings(kb?: Partial<Record<KeyAction, string>>): Record<KeyAction, string> {
   const out = { ...DEFAULT_KEYBINDINGS };
   if (kb) for (const a of KEY_ACTIONS) if (kb[a]) out[a] = kb[a] as string;
   return out;
 }
 
-// 키 코드가 어느 동작인지(없으면 null). 넘패드 정규화 적용.
+// Identify which action corresponds to key code (null if none). Applies numpad normalization.
 export function matchAction(code: string, kb: Record<KeyAction, string>): KeyAction | null {
   const c = normalizeCode(code);
   for (const a of KEY_ACTIONS) {
@@ -50,7 +50,7 @@ export function matchAction(code: string, kb: Record<KeyAction, string>): KeyAct
   return null;
 }
 
-// 같은 코드를 이미 다른 동작이 쓰고 있으면 그 동작을 반환(충돌). 자기 자신은 제외.
+// Returns conflicting action if key code is already in use by another action (excludes self).
 export function conflictingAction(
   code: string,
   action: KeyAction,
@@ -63,7 +63,7 @@ export function conflictingAction(
   return null;
 }
 
-// 표시용 라벨
+// Display label
 export function keyLabel(code: string): string {
   if (code === "Space") return "Space";
   if (code === "Backspace") return "⌫";

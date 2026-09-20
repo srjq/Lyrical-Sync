@@ -75,7 +75,7 @@ export function ModeSelectButton() {
       : "bg-zinc-700 hover:bg-zinc-600 text-zinc-100"
     : "bg-zinc-700 hover:bg-zinc-600 text-zinc-100";
 
-  // 모드 이탈 시 이전 재생 정지(공통 헬퍼)
+  // Common helper: stop playback upon exiting mode
   const stopCurrentPlayback = () => {
     if (spotifyMode && isLoggedIn) pausePlayback();
     else audioControls.pause();

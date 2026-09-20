@@ -46,54 +46,54 @@ interface LrcStore {
   stampAndAdvance: () => void;
   goToPreviousLine: () => void;
 
-  // 줄 반복 재생: 재생 위치가 해당 줄 구간(다음 스탬프 줄 또는 끝까지) 끝에 닿으면
-  // 줄 시작으로 되돌아감(AudioPlayer의 audioprocess 핸들러에서 처리)
+  // Line repeat playback: when playback position reaches end of line interval,
+  // loops back to line start (handled in AudioPlayer audioprocess handler)
   loopLineId: string | null;
   setLoopLine: (id: string | null) => void;
 
-  // 글자/단어 동기화 (Enhanced LRC) 편집 모드
+  // Syllable/word sync (Enhanced LRC) editing mode
   syncMode: "line" | "char";
   syncUnit: SyncUnit;
   activeSyllableIndex: number;
   setSyncMode: (m: "line" | "char") => void;
   setSyncUnit: (u: SyncUnit) => void;
   setActiveSyllable: (i: number) => void;
-  // 줄의 토큰 전체를 교체. line.timestamp는 최소 토큰 시각으로 동기화.
-  // recordHistory=false면 히스토리를 쌓지 않음(칠하기 드래그를 1회 undo로 묶기 위함).
+  // Replace all line tokens. line.timestamp synchronizes with earliest token time.
+  // recordHistory=false prevents recording history (to bundle drag painting into single undo).
   commitSyllables: (lineId: string, syllables: LrcSyllable[], recordHistory?: boolean) => void;
-  // 줄의 글자 동기화 제거(일반 줄로 복귀). line.timestamp는 유지.
+  // Remove syllable sync from line (reverts to standard line). line.timestamp preserved.
   clearLineSyllables: (lineId: string) => void;
 
   setMetadata: (meta: Partial<LrcMetadata>, silent?: boolean) => void;
   setLines: (lines: LrcLine[]) => void;
   addLine: (text?: string) => void;
   insertLinesAfter: (afterId: string, texts: string[]) => string;
-  /** 무음 기반 자동 스팟팅: 감지된 구간마다 빈 텍스트 stamped line을 시간순으로 삽입.
-   *  타임스탬프 없는(=아직 안 찍은) 기존 줄은 정렬 기준에서 제외되어 위치가 바뀌지 않음.
-   *  반환값: 삽입된 줄 수 */
+  /** Silence-based auto-spotting: inserts empty text stamped lines chronologically for detected intervals.
+   *  Existing unstamped lines are excluded from sorting criteria, preserving their positions.
+   *  Return value: number of inserted lines */
   addLinesFromSpeechSegments: (segments: { start: number; end: number }[]) => number;
   updateLine: (id: string, patch: Partial<Omit<LrcLine, "id">>) => void;
   deleteLine: (id: string) => void;
-  /** 줄 복제(텍스트만, 타임스탬프 없이 바로 아래에). 새 줄 id 반환 */
+  /** Duplicate line (text only, unstamped, inserted directly below). Returns new line ID */
   duplicateLine: (id: string) => string;
-  /** 줄을 이전 줄과 병합(텍스트 결합, 이전 줄 타임스탬프 유지). 병합된 줄 id, 첫 줄이면 null */
+  /** Merge line with previous line (combines text, keeps previous timestamp). Returns merged line ID or null */
   mergeLineUp: (id: string) => string | null;
-  /** 커서 위치에서 줄을 둘로 분할. 새(뒤) 줄 id 반환 */
+  /** Split line into two at cursor position. Returns new (second) line ID */
   splitLine: (id: string, caretPos: number) => string;
-  /** 줄 순서 이동(드래그 재정렬) */
+  /** Reorder lines (drag reordering) */
   moveLine: (fromIndex: number, toIndex: number) => void;
-  /** 모든 타임스탬프(+글자 동기화)를 배율로 스케일 — 템포/버전 불일치 보정 */
+  /** Scale all timestamps (+ syllable sync) by factor — corrects tempo/version discrepancy */
   scaleTimestamps: (factor: number) => void;
-  /** 여러 줄 일괄 삭제 */
+  /** Batch delete multiple lines */
   deleteLines: (ids: string[]) => void;
-  /** 여러 줄의 타임스탬프(+글자 동기화)를 delta초만큼 이동 */
+  /** Shift timestamps (+ syllable sync) of multiple lines by delta seconds */
   shiftLines: (ids: string[], delta: number) => void;
-  /** 여러 줄의 타임스탬프·글자 동기화 제거(텍스트 유지) */
+  /** Strip timestamps and syllable sync from multiple lines (preserves text) */
   clearTimestamps: (ids: string[]) => void;
   stampCurrentLine: (id: string) => void;
   applyOffset: () => void;
   loadFromRawText: (raw: string) => void;
-  /** 자동 복구: 스냅샷 문서·경로를 통째로 복원(미저장 상태로) */
+  /** Auto-recovery: restores snapshot document and path completely (in unsaved state) */
   restoreDoc: (doc: LrcDocument, lrcPath: string | null, audioPath: string | null) => void;
 
   setAudioPath: (path: string | null) => void;
@@ -101,9 +101,9 @@ interface LrcStore {
   openLrc: () => Promise<void>;
   loadLyricsPath: (path: string) => Promise<void>;
   applyFetchedLyrics: (lrcText: string, meta?: { title: string; artist: string; album: string }) => void;
-  // 반환값: 실제로 파일을 썼으면 true, 사용자가 저장 다이얼로그를 취소하면 false
+  // Return value: true if file was written, false if user cancelled save dialog
   saveLrc: () => Promise<boolean>;
-  // enhanced: 이번 저장에만 적용하는 일회성 override(미지정 시 글자 데이터 있으면 E-LRC)
+  // enhanced: one-time override for current save (if unspecified, defaults to E-LRC when syllable data exists)
   saveLrcAs: (format: "lrc" | "srt" | "vtt" | "ass", enhanced?: boolean) => Promise<boolean>;
   newLrc: () => void;
   replaceInLines: (find: string, replace: string, caseSensitive: boolean) => number;
@@ -124,14 +124,14 @@ interface LrcStore {
 let nextId = 1;
 const genId = () => String(nextId++);
 
-// 저장 경로의 확장자에 따라 LRC 또는 SRT로 직렬화
+// Serialize to LRC or SRT based on the file extension of the save path
 function serializeForPath(path: string, doc: LrcDocument, duration: number): string {
   const p = path.toLowerCase();
   const end = duration > 0 ? duration : undefined;
   if (p.endsWith(".srt")) return serializeSrt(doc, end);
   if (p.endsWith(".vtt")) return serializeVtt(doc, end);
   if (p.endsWith(".ass")) return serializeAss(doc, end);
-  // 글자/단어 동기화가 있으면 보존(자동 E-LRC), 없으면 일반 LRC로 출력
+  // Preserves syllable/word sync if present (auto E-LRC), otherwise outputs standard LRC
   return serializeLrc(doc, true);
 }
 
@@ -230,7 +230,7 @@ export const useLrcStore = create<LrcStore>((set, get) => ({
     const lines = doc.lines;
     if (lines.length === 0) return;
 
-    // 활성 줄이 없으면 선택만(문서 변경 없음 → 히스토리 기록 안 함)
+    // If no active line, select only (no document change -> do not record history)
     if (!activeLineId) {
       set({ activeLineId: lines[0].id });
       return;
@@ -249,7 +249,7 @@ export const useLrcStore = create<LrcStore>((set, get) => ({
       delete newConfidence[activeLineId];
     }
 
-    // 실제 스탬프할 때만 히스토리 기록
+    // Record history only when actually stamping
     set({
       _history: [..._history.slice(-(MAX_HISTORY - 1)), doc], _future: [],
       doc: { ...doc, lines: stamped },
@@ -274,7 +274,7 @@ export const useLrcStore = create<LrcStore>((set, get) => ({
   setMetadata: (meta, silent = false) =>
     set((s) => ({
       doc: { ...s.doc, metadata: { ...s.doc.metadata, ...meta } },
-      // silent: 서비스(Spotify) 자동 동기화 등 사용자 편집이 아닌 갱신은 dirty로 표시하지 않음
+      // silent: automated sync (e.g. Spotify) rather than user edit does not mark dirty
       isDirty: silent ? s.isDirty : true,
     })),
 
@@ -310,7 +310,7 @@ export const useLrcStore = create<LrcStore>((set, get) => ({
     for (const seg of segments) {
       const ts = Math.round(seg.start * 1000) / 1000;
       const newLine: LrcLine = { id: genId(), timestamp: ts, text: "" };
-      // 이미 타임스탬프가 찍힌 줄만 정렬 기준으로 삼음 — 미입력 줄은 건너뛰어 위치 유지
+      // Only lines with existing timestamps are considered for sorting — unentered lines keep position
       const idx = lines.findIndex((l) => l.timestamp !== null && (l.timestamp as number) > ts);
       const insertAt = idx === -1 ? lines.length : idx;
       lines = [...lines.slice(0, insertAt), newLine, ...lines.slice(insertAt)];
@@ -343,7 +343,7 @@ export const useLrcStore = create<LrcStore>((set, get) => ({
     const idx = doc.lines.findIndex((l) => l.id === id);
     if (idx < 0) return id;
     const newId = genId();
-    // 텍스트만 복제 — 타임스탬프/글자 동기화는 비워 중복 시각을 만들지 않음
+    // Duplicate text only — clear timestamps and syllable sync to avoid duplicate times
     const copy: LrcLine = { id: newId, timestamp: null, text: doc.lines[idx].text };
     const lines = [...doc.lines];
     lines.splice(idx + 1, 0, copy);
@@ -358,7 +358,7 @@ export const useLrcStore = create<LrcStore>((set, get) => ({
     const prev = doc.lines[idx - 1];
     const cur = doc.lines[idx];
     const sep = prev.text && cur.text ? " " : "";
-    // 이전 줄 타임스탬프 유지, 텍스트 결합, 글자 동기화는 무효화(텍스트 변경)
+    // Keep previous line timestamp, merge text, invalidate syllable sync (text modified)
     const merged: LrcLine = { ...prev, text: prev.text + sep + cur.text, syllables: undefined };
     const lines = [...doc.lines];
     lines.splice(idx - 1, 2, merged);
@@ -372,7 +372,7 @@ export const useLrcStore = create<LrcStore>((set, get) => ({
     if (idx < 0) return id;
     const cur = doc.lines[idx];
     const newId = genId();
-    // 앞부분: 타임스탬프 유지 / 뒷부분: 새 줄(타임스탬프 없음). 둘 다 글자 동기화 무효화
+    // First part: keep timestamp / Second part: new line (no timestamp). Both invalidate syllable sync
     const first: LrcLine = { ...cur, text: cur.text.slice(0, caretPos), syllables: undefined };
     const second: LrcLine = { id: newId, timestamp: null, text: cur.text.slice(caretPos) };
     const lines = [...doc.lines];
@@ -468,7 +468,7 @@ export const useLrcStore = create<LrcStore>((set, get) => ({
   },
 
   restoreDoc: (doc, lrcPath, audioPath) => {
-    // 줄 id를 새로 부여해 nextId 카운터와 충돌 없게 함
+    // Assign new line IDs to avoid collision with nextId counter
     let id = 1;
     const lines = doc.lines.map((l) => ({ ...l, id: String(id++) }));
     nextId = id;
@@ -478,7 +478,7 @@ export const useLrcStore = create<LrcStore>((set, get) => ({
       audioPath,
       activeLineId: lines[0]?.id ?? null,
       loopLineId: null,
-      isDirty: true, // 복구된 작업은 아직 미저장
+      isDirty: true, // Recovered work is not yet saved
       _history: [],
       _future: [],
     });
@@ -487,7 +487,7 @@ export const useLrcStore = create<LrcStore>((set, get) => ({
   applyOffset: () => {
     const { doc, _history } = get();
     const deltaSeconds = doc.metadata.offset / 1000;
-    if (deltaSeconds === 0) return; // 변화 없음 → 히스토리 기록 안 함(빈 undo 방지)
+    if (deltaSeconds === 0) return; // No change -> do not record history (prevents empty undo)
     set({ _history: [..._history.slice(-(MAX_HISTORY - 1)), doc], _future: [] });
     set({
       doc: {
@@ -498,7 +498,7 @@ export const useLrcStore = create<LrcStore>((set, get) => ({
           timestamp: l.timestamp !== null
             ? Math.max(0, l.timestamp + deltaSeconds)
             : null,
-          // 글자 동기화 토큰 시각도 함께 이동
+          // Shift syllable sync token timestamps as well
           syllables: l.syllables?.map((s) => ({
             ...s,
             time: s.time !== null ? Math.max(0, s.time + deltaSeconds) : null,
@@ -522,7 +522,7 @@ export const useLrcStore = create<LrcStore>((set, get) => ({
     if (typeof selected === "string") get().setAudioPath(selected);
   },
 
-  // 경로로 가사 로드 (확장자로 LRC/SRT 분기). 다이얼로그/드래그앤드롭 공용.
+  // Load lyrics by path (branch LRC/SRT by extension). Shared by dialog and drag & drop.
   loadLyricsPath: async (path) => {
     const content: string = await invoke("read_lrc_file", { path });
     const isSrt = path.split(".").pop()?.toLowerCase() === "srt";
@@ -535,9 +535,9 @@ export const useLrcStore = create<LrcStore>((set, get) => ({
     useSettingsStore.getState().addRecentFile({ lrcPath: path, audioPath: get().audioPath });
   },
 
-  // LRCLIB 등 외부에서 가져온 가사 적용. 라인은 교체하되 메타데이터는 보존:
-  // 이미 입력된 title/artist/album은 그대로 두고, 비어 있는 필드만 결과로 채운다.
-  // (by/offset도 보존). 로컬 파일 무관 → lrcPath 비움.
+  // Apply lyrics fetched externally (e.g. LRCLIB). Replace lines while preserving metadata:
+  // Keep existing title/artist/album, only filling in empty fields.
+  // (preserves by/offset). Unrelated to local file -> clear lrcPath.
   applyFetchedLyrics: (lrcText, meta) => {
     const parsed = parseLrc(lrcText);
     let id = 1;
@@ -564,7 +564,7 @@ export const useLrcStore = create<LrcStore>((set, get) => ({
     });
   },
 
-  // 가사 열기: LRC·SRT 모두 지원.
+  // Open lyrics: supports both LRC and SRT.
   openLrc: async () => {
     const selected = await open({
       multiple: false,
@@ -601,11 +601,11 @@ export const useLrcStore = create<LrcStore>((set, get) => ({
         : format === "ass" ? serializeAss(doc, end)
         : serializeLrc(doc, enhanced ?? true);
       await invoke("write_lrc_file", { path, content });
-      // 보조 포맷 저장 시엔 작업 파일 경로(lrcPath)·dirty 상태를 바꾸지 않음
+      // Saving secondary format does not alter working file path (lrcPath) or dirty state
       if (format === "lrc" || format === "srt") set({ lrcPath: path, isDirty: false });
       return true;
     }
-    return false; // 사용자가 저장 다이얼로그 취소
+    return false; // User cancelled save dialog
   },
 
   newLrc: () =>
@@ -638,7 +638,7 @@ export const useLrcStore = create<LrcStore>((set, get) => ({
       const matches = l.text.match(re);
       if (!matches) return l;
       count += matches.length;
-      // 텍스트가 바뀌면 옛 토큰 경계가 무효 → 글자 동기화 해제
+      // Invalidate syllable sync when text changes as old token boundaries become invalid
       return { ...l, text: l.text.replace(re, replace), syllables: undefined };
     });
     if (count === 0) return 0;
@@ -675,30 +675,30 @@ export const useLrcStore = create<LrcStore>((set, get) => ({
         useVad,
       });
 
-      // align.py는 { lines, vocal_segments, separated } 객체를 반환(구버전은 배열).
+      // align.py returns { lines, vocal_segments, separated } object (array in legacy versions).
       const parsed = JSON.parse(resultJson);
       const results: AlignmentResult[] = Array.isArray(parsed) ? parsed : parsed.lines;
       const vocalSegments: [number, number][] = Array.isArray(parsed) ? [] : (parsed.vocal_segments ?? []);
       const separated: boolean = Array.isArray(parsed) ? false : !!parsed.separated;
       const byIndex = new Map(results.map((r) => [r.index, r]));
 
-      // 간주 뒤 보컬이 다시 시작하는 지점(분리 스템 VAD). prevEnd 직후 첫 보컬 구간 시작.
+      // Point where vocals resume after interlude (separated stem VAD). Start of first vocal segment after prevEnd.
       const vocalResumeAfter = (t: number): number | null => {
         if (!separated || vocalSegments.length === 0) return null;
         for (const [s] of vocalSegments) {
-          if (s > t + 0.1) return s; // 실제 공백 뒤 재개만(이전 줄 꼬리 제외)
+          if (s > t + 0.1) return s; // Only resume after actual silence (excludes tail of previous line)
         }
         return null;
       };
 
-      // 정렬된 줄 [start,end]이 보컬 활동 구간과 얼마나 겹치는지(0~1).
-      // VAD 없으면 1(페널티 없음). 겹침이 낮으면 보컬 없는 구간에 잘못 찍혔을 가능성.
+      // Overlap ratio (0-1) between aligned line [start, end] and vocal activity segments.
+      // 1 without VAD (no penalty). Low overlap suggests likely misaligned during non-vocal sections.
       const vocalOverlapRatio = (start: number, end: number): number => {
         if (!separated || vocalSegments.length === 0) return 1;
         const dur = Math.max(end - start, 0.05);
         let ov = 0;
         for (const [s, e] of vocalSegments) {
-          if (s > end) break; // 정렬되어 있어 조기 종료 가능
+          if (s > end) break; // Sorted, so early termination possible
           ov += Math.max(0, Math.min(end, e) - Math.max(start, s));
         }
         return Math.max(0, Math.min(1, ov / dur));
@@ -708,21 +708,21 @@ export const useLrcStore = create<LrcStore>((set, get) => ({
       const newLines = doc.lines.map((line, idx) => {
         const r = byIndex.get(idx);
         if (r) {
-          // VAD 보정: 보컬 활동과 겹침이 낮은 줄(=무보컬 구간 오정렬 의심)은 신뢰도 하향.
-          // 타임스탬프는 유지하고 배지 색만 낮춰 "검토 필요"로 표시(자동 이동은 정확성 위험으로 미적용).
+          // VAD correction: lower confidence for lines with low vocal overlap (suspected non-vocal misalignment).
+          // Keep timestamp and downgrade badge color to indicate "review needed" (auto-shift omitted due to accuracy risk).
           const ratio = vocalOverlapRatio(r.start, r.end);
           const adjusted = r.confidence * (0.4 + 0.6 * ratio);
           confidence[line.id] = Math.round(adjusted * 1000) / 1000;
-          // AI가 줄 단위로 재정렬 → 기존 글자 동기화는 무효화
+          // Invalidate existing syllable sync as AI realigns at line level
           return { ...line, timestamp: r.start, syllables: undefined };
         }
         return line;
       });
 
-      // 빈 줄(문단 구분선) 타임스탬프 배치:
-      //  - 분리 스템 VAD가 있으면 간주 뒤 "보컬 재개 지점"에 정밀 배치
-      //  - 없으면(또는 부적합) 이전 줄 end + offset 휴리스틱
-      //  항상 다음 비공백 줄 시작을 넘지 않도록 클램프.
+      // Timestamp placement for empty lines (paragraph breaks):
+      //  - If separated stem VAD is available, precisely place at vocal resumption point after interlude
+      //  - Otherwise (or if unsuitable), use previous line end + offset heuristic
+      //  Always clamp to not exceed start of next non-empty line.
       for (let i = 0; i < newLines.length; i++) {
         if (doc.lines[i].text.trim() !== "") continue;
         let prevEnd = 0;

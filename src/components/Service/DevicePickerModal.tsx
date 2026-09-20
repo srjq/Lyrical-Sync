@@ -32,7 +32,7 @@ export function DevicePickerModal({ onClose }: { onClose: () => void }) {
     setBusyId(id);
     try { await transferToDevice(id, isPlaying); } catch { /* ignore */ }
     setBusyId(null);
-    // 전환 반영(활성 표시)될 시간을 두고 새로고침
+    // Refresh with a short delay to allow device switch to propagate
     setTimeout(load, 600);
   };
 

@@ -85,7 +85,7 @@ export function GeneralSettingsTab({
 
       <div className="border-t border-zinc-800" />
 
-      {/* Enhanced LRC 저장 알림 */}
+      {/* Enhanced LRC save notification */}
       <div className="flex flex-col gap-2">
         <div className="flex items-center justify-between">
           <span className="text-sm font-medium text-zinc-200">{t.settingsElrcNotice}</span>

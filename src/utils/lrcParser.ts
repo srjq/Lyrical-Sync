@@ -2,7 +2,7 @@ import { LrcDocument, LrcLine, LrcMetadata, LrcSyllable, defaultDocument } from 
 
 export type SyncUnit = "char" | "word";
 
-// 줄 텍스트를 글자/단어 토큰으로 분할. 공백도 토큰으로 보존(연결 시 원문 복원).
+// Split line text into character/word tokens. Preserve whitespace as tokens (reconstructs original when joined).
 export function tokenizeText(text: string, unit: SyncUnit): LrcSyllable[] {
   if (text === "") return [];
   const pieces =
@@ -12,10 +12,10 @@ export function tokenizeText(text: string, unit: SyncUnit): LrcSyllable[] {
   return pieces.map((p) => ({ text: p, time: null }));
 }
 
-// 공백뿐인 토큰은 스탬프 대상이 아님
+// Whitespace-only tokens are not stampable
 export const isStampable = (s: LrcSyllable): boolean => s.text.trim() !== "";
 
-// 스탬프 시각을 이웃(시각이 있는) 토큰 사이로 클램프 → 글자 시각이 항상 단조 증가(유효한 A2 보장)
+// Clamp stamped time between neighboring timed tokens -> guarantees monotonic increase (valid A2)
 export function clampToNeighbors(syl: LrcSyllable[], index: number, time: number): number {
   let lo = 0;
   let hi = Infinity;
@@ -33,15 +33,15 @@ const META_TAGS: Record<string, keyof LrcMetadata> = {
 };
 
 const META_RE = /^\[(\w+):([^\]]*)\]$/;
-// 줄 맨 앞의 타임스탬프 토큰: [mm:ss.xx] / [mm:ss.xxx] / [mm:ss] (센티초 선택)
-// 한 줄에 여러 토큰이 올 수 있음 (후렴 반복: [t1][t2]가사)
+// Leading timestamp tokens: [mm:ss.xx] / [mm:ss.xxx] / [mm:ss] (optional centiseconds)
+// Multiple tokens can appear on one line (repeated chorus: [t1][t2]lyrics)
 const TS_TOKEN_RE = /^\[(\d{1,2}):(\d{2})(?:\.(\d{1,3}))?\]/;
 
-// Enhanced LRC 인라인 단어 타임스탬프 <mm:ss.xx>
+// Enhanced LRC inline word timestamp <mm:ss.xx>
 const INLINE_TS_RE = /<(\d{1,2}):(\d{2})(?:\.(\d{1,3}))?>/g;
 
-// 줄 텍스트(앞쪽 [..] 제거 후) 안의 <mm:ss.xx> 인라인 태그를 파싱해 토큰 배열로.
-// 인라인 태그가 없으면 null.
+// Parse <mm:ss.xx> inline tags inside line text (after leading [..] stripped) into token array.
+// Returns null if no inline tags present.
 function parseInlineSyllables(rest: string): LrcSyllable[] | null {
   if (!rest.includes("<")) return null;
   INLINE_TS_RE.lastIndex = 0;
@@ -57,7 +57,7 @@ function parseInlineSyllables(rest: string): LrcSyllable[] | null {
   if (tags.length === 0) return null;
 
   const syl: LrcSyllable[] = [];
-  // 첫 태그 앞의 텍스트는 타임스탬프 없는 선행 텍스트
+  // Text before the first tag is leading untimed text
   if (tags[0].start > 0) syl.push({ text: rest.slice(0, tags[0].start), time: null });
   for (let i = 0; i < tags.length; i++) {
     const textStart = tags[i].end;
@@ -67,20 +67,20 @@ function parseInlineSyllables(rest: string): LrcSyllable[] | null {
   return syl;
 }
 
-// 소수 부분 문자열을 초로 변환 ("5"→0.5, "34"→0.34, "345"→0.345)
+// Convert fractional second string to seconds ("5"->0.5, "34"->0.34, "345"->0.345)
 function fracToSeconds(frac: string | undefined): number {
   if (!frac) return 0;
   return parseInt(frac, 10) / Math.pow(10, frac.length);
 }
 
-// 단일 타임스탬프 토큰 문자열을 초로 파싱 (뒤따르는 텍스트는 무시)
+// Parse single timestamp token string into seconds (ignores trailing text)
 export function parseTimestamp(ts: string): number | null {
   const m = TS_TOKEN_RE.exec(ts);
   if (!m) return null;
   return parseInt(m[1], 10) * 60 + parseInt(m[2], 10) + fracToSeconds(m[3]);
 }
 
-// MM:SS.xx 형식의 사용자 입력을 초(number)로 파싱
+// Parse user input in MM:SS.xx format into seconds (number)
 export function parseTimestampInput(input: string): number | null {
   const m = /^(\d+):(\d{2})\.(\d{2,3})$/.exec(input.trim());
   if (!m) return null;
@@ -90,7 +90,7 @@ export function parseTimestampInput(input: string): number | null {
   return mins * 60 + secs + frac;
 }
 
-// LRC 파일 직렬화용 [MM:SS.xx]
+// [MM:SS.xx] for LRC file serialization
 export function formatTimestamp(seconds: number): string {
   const totalCs = Math.round(seconds * 100);
   const cs = totalCs % 100;
@@ -100,7 +100,7 @@ export function formatTimestamp(seconds: number): string {
   return `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}.${String(cs).padStart(2, "0")}`;
 }
 
-// UI 표시용 H:MM:SS.mmm
+// H:MM:SS.mmm for UI display
 export function formatDisplayTime(seconds: number): string {
   const totalMs = Math.round(seconds * 1000);
   const ms = totalMs % 1000;
@@ -114,11 +114,11 @@ export function formatDisplayTime(seconds: number): string {
 
 export type LineWarning = "outOfOrder" | "duplicate";
 
-// 타임스탬프 줄의 순서 역전·중복을 검사해 lineId → 경고 맵 반환
+// Check stamped lines for reverse ordering / duplicates and return lineId -> warning map
 export function validateTimestamps(lines: LrcLine[]): Map<string, LineWarning> {
   const warnings = new Map<string, LineWarning>();
 
-  // 중복 검사 (센티초 단위 = LRC 정밀도)
+  // Duplicate check (centisecond precision = LRC standard)
   const seen = new Map<number, string[]>();
   for (const l of lines) {
     if (l.timestamp === null) continue;
@@ -131,12 +131,12 @@ export function validateTimestamps(lines: LrcLine[]): Map<string, LineWarning> {
     if (ids.length > 1) ids.forEach((id) => warnings.set(id, "duplicate"));
   }
 
-  // 순서 역전 검사 (배열 순서 = 가사 순서, 타임스탬프는 오름차순이어야 함)
+  // Inverted order check (array order = lyric sequence; timestamps must be monotonically ascending)
   let lastTs: number | null = null;
   for (const l of lines) {
     if (l.timestamp === null) continue;
     if (lastTs !== null && l.timestamp < lastTs) {
-      // 중복 경고가 우선이 아니면 순서 경고로 표시
+      // Show order warning if duplicate warning does not take precedence
       if (!warnings.has(l.id)) warnings.set(l.id, "outOfOrder");
     }
     lastTs = l.timestamp;
@@ -153,9 +153,9 @@ export function parseLrc(raw: string): LrcDocument {
     const line = rawLine.trim();
     if (!line) continue;
 
-    // 타임스탬프 줄을 META_RE보다 먼저 검사
-    // ([MM:SS.xx] 형식이 META_RE에도 매칭되므로 순서가 중요)
-    // 줄 앞의 타임스탬프 토큰을 모두 추출 → 토큰 개수만큼 같은 텍스트로 줄 분리
+    // Check timestamp line before META_RE
+    // ([MM:SS.xx] format also matches META_RE, so evaluation order matters)
+    // Extract all leading timestamp tokens -> split line by number of tokens with duplicate text
     const timestamps: number[] = [];
     let rest = line;
     let tok: RegExpExecArray | null;
@@ -173,7 +173,7 @@ export function parseLrc(raw: string): LrcDocument {
           id: String(lineId++),
           timestamp: ts,
           text,
-          // 반복 줄([t1][t2]…)마다 토큰을 복제해 공유 참조 방지
+          // Clone tokens for repeated lines ([t1][t2]...) to prevent shared references
           ...(syllables ? { syllables: syllables.map((s) => ({ ...s })) } : {}),
         });
       }
@@ -210,7 +210,7 @@ export function parseLrc(raw: string): LrcDocument {
   return doc;
 }
 
-// enhanced=false면 글자/단어 동기화 태그를 제거하고 일반 LRC로 출력
+// If enhanced=false, strip syllable/word sync tags and output standard LRC
 export function serializeLrc(doc: LrcDocument, enhanced = true): string {
   const { metadata, lines, extraTags } = doc;
   const parts: string[] = [];
@@ -226,7 +226,7 @@ export function serializeLrc(doc: LrcDocument, enhanced = true): string {
   parts.push("");
 
   for (const line of lines) {
-    // Enhanced LRC(A2): 토큰에 시각이 하나라도 있으면 <mm:ss.xx> 인라인으로 출력
+    // Enhanced LRC (A2): output <mm:ss.xx> inline if any token has a timestamp
     const timedSyl = enhanced && line.syllables?.some((s) => s.time !== null);
     if (timedSyl && line.syllables) {
       const times = line.syllables.filter((s) => s.time !== null).map((s) => s.time as number);

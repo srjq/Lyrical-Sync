@@ -1,6 +1,6 @@
 import { LrcDocument, defaultDocument } from "../types/lrc";
 
-// SubRip 시간 형식: HH:MM:SS,mmm
+// SubRip time format: HH:MM:SS,mmm
 function formatSrtTime(seconds: number): string {
   const totalMs = Math.max(0, Math.round(seconds * 1000));
   const ms = totalMs % 1000;
@@ -15,7 +15,7 @@ function formatSrtTime(seconds: number): string {
   );
 }
 
-// HH:MM:SS,mmm 또는 H:MM:SS.mmm 등 허용 (콤마/마침표 모두)
+// Accepts HH:MM:SS,mmm or H:MM:SS.mmm (both comma and period)
 const SRT_TIME_RE = /(\d{1,2}):(\d{2}):(\d{2})[.,](\d{1,3})/;
 
 function parseSrtTime(str: string): number | null {
@@ -29,10 +29,10 @@ function parseSrtTime(str: string): number | null {
 }
 
 /**
- * LRC 문서를 SubRip(SRT) 문자열로 직렬화.
- * 각 자막의 종료 시간 = 다음(시간 있는) 줄의 시작 시간.
- * 빈 줄(text:"")은 자막으로 출력하지 않고 직전 자막의 종료 경계로만 사용됨.
- * 마지막 줄은 다음 줄이 없으므로 lastCueEnd(있으면) 또는 start + 4초로 종료.
+ * Serialize LRC document to SubRip (SRT) string.
+ * End time of each subtitle = start time of next (stamped) line.
+ * Empty lines (text:"") are not emitted as subtitles, serving only as end boundary for preceding cue.
+ * Final line has no subsequent line, so ends at lastCueEnd (if present) or start + 4s.
  */
 export function serializeSrt(doc: LrcDocument, lastCueEnd?: number): string {
   const timed = doc.lines
@@ -43,7 +43,7 @@ export function serializeSrt(doc: LrcDocument, lastCueEnd?: number): string {
   const cues: { start: number; end: number; text: string }[] = [];
   for (let i = 0; i < timed.length; i++) {
     const line = timed[i];
-    if (line.text.trim() === "") continue; // 빈 줄 = 경계 전용
+    if (line.text.trim() === "") continue; // Empty line = boundary only
     const start = line.timestamp as number;
     const next = timed[i + 1];
     let end: number;
@@ -68,29 +68,29 @@ export function serializeSrt(doc: LrcDocument, lastCueEnd?: number): string {
 }
 
 /**
- * SubRip(SRT) 문자열을 LRC 문서로 파싱.
- * 각 자막 cue의 시작 시간을 LRC 타임스탬프로 변환.
- * cue 본문이 여러 줄이면 공백으로 합쳐 한 줄로 만듦.
+ * Parse SubRip (SRT) string into LRC document.
+ * Converts each subtitle cue start time into an LRC timestamp.
+ * Multi-line cue bodies are joined with spaces into a single line.
  *
- * 가사 사이 빈 시간(갭): cue가 끝난 뒤 다음 cue 시작 전까지 공백이 있으면,
- * 그 종료 시각에 "텍스트 없는 타임스탬프 줄"(LRC 문단 구분선)을 삽입해
- * 에디터에서 가사가 비는 구간을 빈 줄로 표현한다. serializeSrt가 이 빈 줄을
- * 직전 cue의 종료 경계로 사용하므로 SRT→LRC→SRT 라운드트립도 보존된다.
+ * Gaps between lyrics: if there is silence between cue end and next cue start,
+ * an empty timestamp line (LRC paragraph break) is inserted at that end time
+ * to represent empty intervals in editor. serializeSrt uses this empty line
+ * as the end boundary of the previous cue, preserving SRT->LRC->SRT roundtrips.
  */
 export function parseSrt(raw: string): LrcDocument {
   const doc = defaultDocument();
   let lineId = 0;
 
-  // CRLF 정규화 후 빈 줄 기준으로 블록 분할
+  // Normalize CRLF and split into blocks by blank lines
   const blocks = raw.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split(/\n\s*\n/);
 
-  // 1) cue(start, end, text) 수집
+  // 1) Collect cues (start, end, text)
   const cues: { start: number; end: number; text: string }[] = [];
   for (const block of blocks) {
     const rows = block.split("\n").map((r) => r.trim()).filter((r) => r !== "");
     if (rows.length === 0) continue;
 
-    // 시간 줄(--> 포함)을 찾음. 그 앞은 인덱스 번호(있으면), 그 뒤는 본문.
+    // Find time line (containing -->). Preceding line is index number (if any), following is text body.
     const arrowIdx = rows.findIndex((r) => r.includes("-->"));
     if (arrowIdx === -1) continue;
 
@@ -105,13 +105,13 @@ export function parseSrt(raw: string): LrcDocument {
 
   cues.sort((a, b) => a.start - b.start);
 
-  // 2) cue → 가사 줄 + 가사 사이 갭에 빈 줄(경계) 삽입
-  const cs = (s: number) => Math.round(s * 100); // 센티초(LRC 정밀도) 기준 비교
+  // 2) cues -> lyric lines + insert empty boundary lines in gaps
+  const cs = (s: number) => Math.round(s * 100); // Comparison in centiseconds (LRC precision)
   for (let i = 0; i < cues.length; i++) {
     const cue = cues[i];
     doc.lines.push({ id: String(lineId++), timestamp: cue.start, text: cue.text });
 
-    // 다음 cue가 있고, 종료 시각이 현재 시작보다 뒤·다음 시작보다 앞이면(갭 존재) 빈 줄 삽입
+    // Insert blank line if next cue exists and end time is after current start and before next start (gap present)
     const next = cues[i + 1];
     if (next && cs(cue.end) > cs(cue.start) && cs(cue.end) < cs(next.start)) {
       doc.lines.push({ id: String(lineId++), timestamp: cue.end, text: "" });

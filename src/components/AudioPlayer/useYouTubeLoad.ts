@@ -5,8 +5,8 @@ import { useSettingsStore } from "../../stores/useSettingsStore";
 import { useBusyStore } from "../../stores/useBusyStore";
 import { safeUnlisten } from "../../utils/safeUnlisten";
 
-// YouTube URL → yt-dlp 오디오 다운로드 흐름 전체(모달 상태 + 진행률 이벤트 + 취소).
-// AudioPlayer에서 분리해 파일 모드/Spotify/기기 감지 엔진 로직과 뒤섞이지 않게 함.
+// YouTube URL -> yt-dlp audio download flow (modal state + progress event + cancellation).
+// Separated from AudioPlayer to decouple from file mode / Spotify / device mode logic.
 export function useYouTubeLoad(setAudioPath: (path: string) => void) {
   const { ytdlpAudioQuality, ytdlpCookiesFile, ytdlpProxy } = useSettingsStore();
 
@@ -15,7 +15,7 @@ export function useYouTubeLoad(setAudioPath: (path: string) => void) {
   const [ytError, setYtError] = useState<string | null>(null);
   const [ytModalOpen, setYtModalOpen] = useState(false);
 
-  // 업데이트 다운로드/재시작이 yt-dlp 다운로드와 겹치지 않도록 busy 상태를 함께 표시
+  // Set busy state to prevent update downloads/restarts from clashing with active yt-dlp download
   const YT_BUSY_ID = "youtube-download";
   const setYtLoading = (v: boolean) => {
     setYtLoadingRaw(v);

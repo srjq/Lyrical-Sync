@@ -27,7 +27,7 @@ export function LrcLibPublishModal({ onClose }: { onClose: () => void }) {
     return { plainLyrics: plain, syncedLyrics: synced, hasSync: synced.length > 0 };
   }, [doc.lines]);
 
-  // 누락 요건
+  // Missing requirements
   const missing: string[] = [];
   if (!title) missing.push(t.lrclibPublish.needTitle);
   if (!artist) missing.push(t.lrclibPublish.needArtist);
@@ -74,7 +74,7 @@ export function LrcLibPublishModal({ onClose }: { onClose: () => void }) {
         </div>
 
         <div className="p-5 flex flex-col gap-3">
-          {/* 업로드 메타 미리보기 */}
+          {/* Upload metadata preview */}
           <div className="rounded-lg bg-zinc-800/60 px-4 py-3 flex flex-col gap-1 text-sm">
             <Row label={t.lrclib.fieldTitle} value={title || "—"} />
             <Row label={t.lrclib.fieldArtist} value={artist || "—"} />

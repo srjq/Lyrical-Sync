@@ -6,7 +6,7 @@ import { SeekBar } from "../AudioPlayer/SeekBar";
 import { CtrlBtn } from "../AudioPlayer/CtrlBtn";
 import { PlayIcon, PauseIcon, SkipBackIcon, SkipFwdIcon } from "../AudioPlayer/icons";
 
-// Device 패널의 컴팩트 컨트롤(원형 accent 없이 h-8 사각 버튼)로 고정한 CtrlBtn.
+// CtrlBtn styled as compact controls for Device panel (h-8 rectangular button without circular accent).
 function DeviceCtrlBtn(props: Omit<React.ComponentProps<typeof CtrlBtn>, "accentClass" | "baseClass">) {
   return (
     <CtrlBtn
@@ -17,9 +17,9 @@ function DeviceCtrlBtn(props: Omit<React.ComponentProps<typeof CtrlBtn>, "accent
   );
 }
 
-// Windows SMTC로 감지한 로컬 재생 정보 패널. Spotify 원격 제어와 달리 임의의 다른 앱
-// 세션을 다루므로(Spotify 데스크톱, Apple Music, 브라우저 등) 소스 앱을 표시하고,
-// 일부 세션은 seek를 지원하지 않을 수 있음을 감안해 조작은 낙관적으로만 반영한다.
+// Local playback panel detected via OS media controls (Windows SMTC / macOS MediaRemote).
+// Displays source app name (Spotify desktop, Apple Music, browser, etc.) and handles seek optimistically
+// as some external media sessions may not support seeking.
 export function DevicePlayerPanel() {
   const { t } = useI18nStore();
   const { isPlaying, positionMs, durationMs, trackName, artistName, albumName, sourceApp, hasSession } = useDeviceStore();
@@ -45,7 +45,7 @@ export function DevicePlayerPanel() {
         accentClass="bg-indigo-500"
       />
 
-      {/* 컨트롤 */}
+      {/* Controls */}
       <div className="flex items-center justify-center gap-0.5">
         <DeviceCtrlBtn onClick={() => deviceControls.skip(-5)} title={t.tooltipSkipBack5}>
           <SkipBackIcon size={12} /><span className="text-[10px] font-bold ml-0.5">5</span>

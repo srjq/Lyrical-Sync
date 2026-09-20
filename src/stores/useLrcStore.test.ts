@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 
-// zustand persist(useSettingsStore)용 최소 localStorage 폴리필 (node 환경)
+// Minimal localStorage polyfill for zustand persist (useSettingsStore) (node environment)
 if (typeof globalThis.localStorage === "undefined") {
   const m = new Map<string, string>();
   globalThis.localStorage = {
@@ -13,7 +13,7 @@ if (typeof globalThis.localStorage === "undefined") {
   } as Storage;
 }
 
-// 파일/이벤트/다이얼로그 Tauri 모듈은 순수 액션 테스트에 불필요 → 스텁
+// Stub file/event/dialog Tauri modules unnecessary for pure action testing
 vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn() }));
 vi.mock("@tauri-apps/api/event", () => ({ listen: vi.fn(() => Promise.resolve(() => {})) }));
 vi.mock("@tauri-apps/plugin-dialog", () => ({ open: vi.fn(), save: vi.fn() }));
@@ -328,7 +328,7 @@ describe("useLrcStore — addLinesFromSpeechSegments", () => {
   it("does not reorder existing unstamped lines", () => {
     reset([{ id: "1", timestamp: null, text: "typed first" }, { id: "2", timestamp: null, text: "typed second" }]);
     useLrcStore.getState().addLinesFromSpeechSegments([{ start: 1, end: 1.5 }]);
-    // 미입력 줄은 정렬 기준에서 제외 → 새 줄은 맨 뒤로 붙고 기존 순서는 그대로
+    // Unentered lines excluded from sorting criteria -> new lines appended at the end, existing order unchanged
     expect(lines().map((l) => l.text)).toEqual(["typed first", "typed second", ""]);
   });
 

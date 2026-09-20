@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach } from "vitest";
 import type { LrcDocument } from "../types/lrc";
 import { saveRecoverySnapshot, loadRecoverySnapshot, clearRecoverySnapshot } from "./recovery";
 
-// localStorage 최소 폴리필 (node 환경)
+// Minimal localStorage polyfill (node environment)
 if (typeof globalThis.localStorage === "undefined") {
   const m = new Map<string, string>();
   globalThis.localStorage = {

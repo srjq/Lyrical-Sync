@@ -6,8 +6,8 @@ import {
   PlayIcon, PauseIcon, StopIcon, SkipBackIcon, SkipFwdIcon, TriLeftIcon, TriRightIcon, MoreIcon,
 } from "./icons";
 
-// 재생 컨트롤 한 줄: 정지(좌) · 스킵/재생(중앙) · 더보기(우, 반복·마커·스펙트로그램·배속).
-// "더보기" 팝오버 열림 상태와 바깥 클릭 감지는 이 컴포넌트가 자체 소유.
+// Playback control row: Stop (left), Skip/Play (center), More (right: loop, markers, spectrogram, speed).
+// Owns the "More" popover open state and outside click detection.
 export function TransportControls({
   t, audioPath, isPlaying, togglePlay, skip, stopAndReset,
   isLooping, onToggleLoop, showMarkers, onToggleMarkers, showSpectrogram, onToggleSpectrogram,
@@ -34,7 +34,7 @@ export function TransportControls({
   const [showMore, setShowMore] = useState(false);
   const moreRef = useRef<HTMLDivElement>(null);
 
-  // 더보기 팝오버 바깥 클릭 시 닫기
+  // Close More popover on outside click
   useEffect(() => {
     if (!showMore) return;
     const h = (e: MouseEvent) => {
@@ -45,7 +45,7 @@ export function TransportControls({
   }, [showMore]);
 
   return (
-    // relative를 행 전체에 두어 팝오버가 좁은 카드 폭(우측 정렬) 안에 들어오게 함
+    // relative positioning across the row keeps popover aligned within card boundaries
     <div className="relative flex items-center gap-0.5" ref={moreRef}>
       <CtrlBtn onClick={stopAndReset} title={t.tooltipStop}>
         <StopIcon />

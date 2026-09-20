@@ -1,5 +1,5 @@
-// 재생 컨트롤 버튼 — AudioPlayer(파일)/ServicePlayerPanel(Spotify)/DevicePlayerPanel(기기 감지)
-// 세 곳에서 색상·크기만 다르게 재사용. 색상/크기는 각 호출부가 정확한 기존 클래스를 넘긴다.
+// Playback control button — reused across AudioPlayer (file), ServicePlayerPanel (Spotify),
+// and DevicePlayerPanel (device mode). Callers pass exact styling classes.
 export function CtrlBtn({
   onClick, title, children, active, accent, disabled,
   accentClass = "w-9 h-9 rounded-full bg-indigo-500 hover:bg-indigo-400 active:bg-indigo-600 text-white",

@@ -15,7 +15,7 @@ impl Default for DownloadState {
     }
 }
 
-/// 사용자가 지정한 커스텀 모델 저장 경로. None이면 앱 기본 경로를 사용합니다.
+/// Custom model storage directory specified by user. If None, default app directory is used.
 pub struct ModelsDirState {
     custom_path: Mutex<Option<PathBuf>>,
 }
@@ -30,7 +30,7 @@ impl Default for ModelsDirState {
 pub struct FileSpec {
     url: String,
     filename: String,
-    /// 선택적 SHA-256 (소문자 hex). 지정 시 다운로드 후 무결성 검증, 불일치하면 파일 삭제·실패.
+    /// Optional SHA-256 (lowercase hex). If specified, verifies integrity after download; deletes file and fails on mismatch.
     #[serde(default)]
     sha256: Option<String>,
 }
@@ -58,7 +58,7 @@ pub fn models_dir(app: &AppHandle, dir_state: &ModelsDirState) -> Result<PathBuf
         .map_err(|e| e.to_string())
 }
 
-/// 커스텀 모델 저장 경로를 설정합니다. None이면 앱 기본 경로로 초기화합니다.
+/// Set custom model storage path. If None, resets to default app path.
 #[tauri::command]
 pub fn set_models_dir_override(
     dir_state: tauri::State<'_, ModelsDirState>,
@@ -79,7 +79,7 @@ pub async fn get_models_dir(
     Ok(dir.to_string_lossy().into_owned())
 }
 
-/// 각 파일이 models 디렉터리에 존재하는지 확인합니다.
+/// Check if each file exists in the models directory.
 #[tauri::command]
 pub async fn check_model_files(
     app: AppHandle,
@@ -90,7 +90,7 @@ pub async fn check_model_files(
     Ok(filenames.iter().map(|f| base.join(f).exists()).collect())
 }
 
-/// 모델 파일 목록을 다운로드합니다. 진행 상황은 `model-download-progress` 이벤트로 전달됩니다.
+/// Download model file list. Progress is emitted via `model-download-progress` event.
 #[tauri::command]
 pub async fn download_model(
     app: AppHandle,
@@ -117,10 +117,9 @@ pub async fn download_model(
             std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
         }
 
-        // 여러 파일 중 일부만 실패했다가 재시도하는 경우, 이미 온전히 받아진 파일은
-        // 다시 받지 않고 건너뛴다(체크섬 지정 시 일치 확인, 없으면 존재만 확인 —
-        // check_model_files와 동일 기준). 안 그러면 마지막 파일 하나만 실패해도
-        // 이미 받은 대용량 파일들까지 매번 처음부터 다시 받게 된다.
+        // When retrying after some files failed, skip files that have already been completely downloaded
+        // (if checksum specified, verify match; otherwise check existence — same criteria as check_model_files).
+        // Otherwise, failure of a single final file would re-download large existing files from scratch.
         if dest.exists() {
             let existing_valid = match spec.sha256.as_deref().map(str::trim).filter(|s| !s.is_empty()) {
                 Some(expected) => {
@@ -148,7 +147,7 @@ pub async fn download_model(
                 );
                 continue;
             }
-            // 손상/불일치 — 지우고 정상적으로 다시 받는다.
+            // Corrupted/mismatch — remove and re-download properly.
             let _ = tokio::fs::remove_file(&dest).await;
         }
 
@@ -201,7 +200,7 @@ pub async fn download_model(
                 }
                 Ok(None) => {
                     file.flush().await.map_err(|e| e.to_string())?;
-                    // 무결성 검증 (sha256 지정된 파일만)
+                    // Integrity check (only for files with sha256 specified)
                     if let Some(expected) = verify {
                         let got = format!("{:x}", hasher.finalize());
                         if !got.eq_ignore_ascii_case(expected) {

@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { formatDisplayTime } from "../../utils/lrcParser";
 
-// 파일/Spotify/YouTube/기기 감지 모드가 공유하는 얇은 탐색 바(기기 감지 모드 스타일을 그대로 일반화).
+// Slim seekbar shared by file, Spotify, YouTube, and device detection modes.
 interface SeekBarProps {
   position: number; // seconds
   duration: number; // seconds
   onSeek: (seconds: number) => void;
-  accentClass: string; // 진행 바 채우기 색상, 예: "bg-indigo-500"
+  accentClass: string; // Progress bar fill color, e.g. "bg-indigo-500"
 }
 
 export function SeekBar({ position, duration, onSeek, accentClass }: SeekBarProps) {

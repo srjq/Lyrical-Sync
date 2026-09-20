@@ -55,6 +55,8 @@ fn python_standalone_url() -> &'static str {
         "https://github.com/indygreg/python-build-standalone/releases/download/20241016/cpython-3.11.10+20241016-x86_64-apple-darwin-install_only.tar.gz"
     } else if cfg!(target_os = "windows") {
         "https://github.com/indygreg/python-build-standalone/releases/download/20241016/cpython-3.11.10+20241016-x86_64-pc-windows-msvc-install_only.tar.gz"
+    } else if cfg!(all(target_os = "linux", target_arch = "x86_64")) {
+        "https://github.com/indygreg/python-build-standalone/releases/download/20241016/cpython-3.11.10+20241016-x86_64-unknown-linux-gnu-install_only.tar.gz"
     } else {
         "unsupported"
     }
@@ -420,4 +422,19 @@ pub async fn install_python_packages(app: AppHandle) -> Result<(), String> {
     });
 
     if success { Ok(()) } else { Err("패키지 설치에 실패했습니다.".to_string()) }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_python_standalone_url_on_linux() {
+        #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+        {
+            let url = python_standalone_url();
+            assert!(url.contains("x86_64-unknown-linux-gnu"));
+            assert!(!url.contains("unsupported"));
+        }
+    }
 }

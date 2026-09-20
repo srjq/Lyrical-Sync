@@ -1,6 +1,6 @@
 import { type Translations } from "../../i18n/translations";
 
-// 다중 선택(Shift/Ctrl·⌘+클릭) 시 나타나는 일괄 작업 툴바.
+// Bulk actions toolbar displayed when multiple lines are selected (Shift/Ctrl/Cmd + click).
 export function BulkActionsBar({
   t, count, onShiftMinus, onShiftPlus, onClearTs, onDelete, onDeselect,
 }: {

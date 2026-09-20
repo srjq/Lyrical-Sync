@@ -1,9 +1,9 @@
 import { describe, it, expect, afterEach, vi } from "vitest";
 import { anyModalOpen } from "./modalGuard";
 
-// jsdom 없이 순수 node 테스트 환경이라 document.querySelector 자체를 스텁 —
-// anyModalOpen이 어떤 셀렉터로 무엇을 묻는지, 그 결과를 어떻게 boolean으로
-// 매핑하는지를 검증한다(실제 CSS 매칭 엔진 동작은 검증 대상이 아님).
+// Stubs document.querySelector in pure node test environment without jsdom —
+// verifies what selectors anyModalOpen queries and how results map to booleans
+// (actual CSS engine behavior is not under test).
 const stubQuerySelector = (returnValue: Element | null) => {
   const querySelector = vi.fn(() => returnValue);
   vi.stubGlobal("document", { querySelector });

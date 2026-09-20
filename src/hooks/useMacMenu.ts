@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 import { Menu, Submenu, MenuItem, PredefinedMenuItem, CheckMenuItem } from "@tauri-apps/api/menu";
 import type { Translations } from "../i18n/translations";
 
-// 메뉴 액션 핸들러 — App에서 현재 상태에 묶인 콜백을 넘긴다.
+// Menu action handlers — App passes callbacks bound to current state.
 export interface MacMenuHandlers {
   newFile: () => void;
   openLrc: () => void;
@@ -33,10 +33,10 @@ export interface MacMenuState {
 const isMac =
   typeof navigator !== "undefined" && navigator.platform.toLowerCase().includes("mac");
 
-// macOS 시스템 메뉴바(애플 로고 우측)에 네이티브 메뉴를 구성한다.
-// Windows/Linux에서는 동작하지 않음 (앱 내 헤더 툴바를 그대로 사용).
+// Configures native menu in macOS system menubar.
+// No-op on Windows/Linux (in-app header toolbar is used directly).
 export function useMacMenu(handlers: MacMenuHandlers, state: MacMenuState) {
-  // 핸들러는 ref로 항상 최신값 참조 (메뉴 재생성 없이 액션이 최신 상태를 봄)
+  // Handlers kept in ref to always refer to latest values without recreating menu
   const hRef = useRef(handlers);
   hRef.current = handlers;
   const h = () => hRef.current;
@@ -82,8 +82,8 @@ export function useMacMenu(handlers: MacMenuHandlers, state: MacMenuState) {
         ],
       });
 
-      // 문서 단위 실행취소/다시실행은 가속키를 두지 않아 입력칸의 네이티브 텍스트
-      // 편집(⌘Z)과 충돌하지 않게 한다. 키보드 ⌘Z는 기존 전역 핸들러가 처리.
+      // Document-level undo/redo does not set accelerators to avoid conflict
+      // with native text input editing (Cmd+Z). Global handler handles keyboard Cmd+Z.
       const editMenu = await Submenu.new({
         text: t.menu.edit,
         items: [
@@ -97,7 +97,7 @@ export function useMacMenu(handlers: MacMenuHandlers, state: MacMenuState) {
         ],
       });
 
-      // 재생 항목은 가속키 없음 (앱의 숫자키/Space 단축키와 충돌 방지)
+      // Playback items have no accelerators (prevents collision with app number/space hotkeys)
       const playMenu = await Submenu.new({
         text: t.menu.playback,
         items: [
@@ -155,6 +155,6 @@ export function useMacMenu(handlers: MacMenuHandlers, state: MacMenuState) {
     return () => {
       cancelled = true;
     };
-    // 라벨(언어)·모드 체크 표시·YouTube 활성 여부가 바뀌면 메뉴 재구성
+    // Rebuild menu when labels (language), mode checkmarks, or YouTube availability change
   }, [t, spotifyMode, youtubeMode, ytdlpInstalled]);
 }

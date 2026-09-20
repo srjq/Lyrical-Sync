@@ -1,0 +1,86 @@
+# Contributor: Tsukimori Ahri <https://github.com/AHRI2nd>
+# Maintainer: Suraj <srjq@users.noreply.github.com>
+pkgname=lyrical-sync
+pkgver=0.6.1
+pkgrel=1
+pkgdesc="Desktop app for creating, syncing, and editing .lrc lyric files"
+arch=(x86_64)
+url="https://github.com/AHRI2nd/Lyrical-Sync"
+license=(MIT)
+depends=(
+  cairo
+  dbus
+  gcc-libs
+  gdk-pixbuf2
+  glib2
+  glibc
+  gtk3
+  hicolor-icon-theme
+  libsoup3
+  openssl
+  webkit2gtk-4.1
+)
+makedepends=(
+  cargo
+  nodejs
+  npm
+)
+source=(
+  "$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz"
+  "linux-support.patch"
+)
+sha256sums=(
+  "e9d5318a70944e0a19a0679fe93fd90c587f4dfc18a9231c547d346eddd7fad0"
+  "3434e24b982a2d5289067428d6c4e0aaaf45c57af4da7510765d2c120a3874fd"
+)
+
+options=(!lto)
+
+prepare() {
+  cd "Lyrical-Sync-$pkgver"
+  patch -Np1 -i "$srcdir/linux-support.patch"
+}
+
+build() {
+  cd "Lyrical-Sync-$pkgver"
+  export CARGO_HOME="$srcdir/cargo-home"
+  export npm_config_cache="$srcdir/npm-cache"
+
+  # GCC LTO produces GIMPLE bytecode that rust-lld cannot link
+  CFLAGS="${CFLAGS//-flto=auto/}"
+  CXXFLAGS="${CXXFLAGS//-flto=auto/}"
+  LDFLAGS="${LDFLAGS//-flto=auto/}"
+
+  npm ci
+  npm run build
+  cargo build --release --locked --manifest-path src-tauri/Cargo.toml
+}
+
+package() {
+  cd "Lyrical-Sync-$pkgver"
+
+  install -Dm755 "src-tauri/target/release/lyrical-sync" "$pkgdir/usr/bin/lyrical-sync"
+
+  install -Dm644 /dev/stdin "$pkgdir/usr/share/applications/lyrical-sync.desktop" << "DESKTOP"
+[Desktop Entry]
+Type=Application
+Name=Lyrical Sync
+GenericName=LRC Lyric Editor
+Comment=Desktop app for creating, syncing, and editing .lrc lyric files
+Exec=lyrical-sync %F
+Icon=lyrical-sync
+Terminal=false
+Categories=AudioVideo;Audio;AudioVideoEditing;
+MimeType=text/x-lrc;application/x-subrip;x-scheme-handler/lyricsync;
+Keywords=lyrics;lrc;srt;subtitles;sync;karaoke;audio;
+StartupWMClass=lyrical-sync
+DESKTOP
+
+  install -Dm644 "src-tauri/icons/32x32.png" "$pkgdir/usr/share/icons/hicolor/32x32/apps/lyrical-sync.png"
+  install -Dm644 "src-tauri/icons/64x64.png" "$pkgdir/usr/share/icons/hicolor/64x64/apps/lyrical-sync.png"
+  install -Dm644 "src-tauri/icons/128x128.png" "$pkgdir/usr/share/icons/hicolor/128x128/apps/lyrical-sync.png"
+  install -Dm644 "src-tauri/icons/128x128@2x.png" "$pkgdir/usr/share/icons/hicolor/256x256/apps/lyrical-sync.png"
+  install -Dm644 "src-tauri/icons/icon.png" "$pkgdir/usr/share/icons/hicolor/512x512/apps/lyrical-sync.png"
+
+  install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}

@@ -10,17 +10,17 @@ import { audioControls } from "../../utils/audioControls";
 import { serviceControls } from "../../utils/serviceControls";
 import type { LrcLine, LrcSyllable } from "../../types/lrc";
 
-// 줄 타임스탬프가 없을 때 글자를 펼칠 기본 시간 창(초)
+// Default time window (seconds) to spread characters when line has no timestamp
 const DEFAULT_SPAN = 8;
 
-// 찍힌 글자 아래 시간 마커(점선+시각) 레이아웃
-const MARK_STEP = 13;        // 단계당 점선 길이 증가(px)
-const MARK_LEVELS = 5;       // 라벨을 배치할 최대 단계 수
-const MARK_GAP = 8;          // 라벨 간 최소 간격(px)
-const MARK_LABEL_H = 14;     // 라벨 높이(px)
-const MARK_TICK = 5;         // 라벨 없는(겹쳐서 생략된) 글자의 짧은 틱 길이(px)
+// Layout for time markers (dashed line + timestamp) under stamped characters
+const MARK_STEP = 13;        // Dashed line height increment per level (px)
+const MARK_LEVELS = 5;       // Maximum number of levels for label layout
+const MARK_GAP = 8;          // Min spacing between labels (px)
+const MARK_LABEL_H = 14;     // Label height (px)
+const MARK_TICK = 5;         // Tick length for unlabeled characters (px)
 
-// label=false: 라벨 들어갈 자리가 없어 틱만 표시
+// label=false: no room for label, render tick only
 type TimeMark = { index: number; x: number; level: number; time: string; label: boolean };
 
 type LineState = "none" | "partial" | "done";
@@ -59,7 +59,7 @@ export function CharSyncView() {
   const lineIdx = activeLineId ? lines.findIndex((l) => l.id === activeLineId) : 0;
   const line: LrcLine | null = lines[lineIdx] ?? null;
 
-  // 표시용 토큰: 저장된 글자 동기화가 있으면 그대로, 없으면 현재 단위로 즉석 토큰화
+  // Display tokens: use stored syllable sync if present, or tokenize dynamically by current unit
   const syllables = useMemo<LrcSyllable[]>(() => {
     if (!line) return [];
     return line.syllables ?? tokenizeText(line.text, syncUnit);
@@ -70,7 +70,7 @@ export function CharSyncView() {
     [syllables]
   );
 
-  // 시간 창 계산
+  // Compute time window
   const prevLineTs = lineIdx > 0 ? lines[lineIdx - 1].timestamp : null;
   const nextLineTs = (() => {
     for (let i = lineIdx + 1; i < lines.length; i++) {
@@ -84,7 +84,7 @@ export function CharSyncView() {
     Math.min(winStart + DEFAULT_SPAN, duration > 0 ? duration : winStart + DEFAULT_SPAN);
   if (winEnd <= winStart) winEnd = winStart + DEFAULT_SPAN;
 
-  // 레인 줌: 창을 1/zoom 너비로 좁혀 재생헤드 중심으로 표시 → 밀집 구간 정밀도↑
+  // Lane zoom: narrow window to 1/zoom width centered on playhead -> increases precision for dense segments
   const [zoom, setZoom] = useState(1);
   useEffect(() => { setZoom(1); }, [activeLineId]);
   let viewStart = winStart;
@@ -98,7 +98,7 @@ export function CharSyncView() {
   const pct = (time: number) =>
     `${Math.max(0, Math.min(1, (time - viewStart) / (viewEnd - viewStart))) * 100}%`;
 
-  // 레인 파형: 전체 트랙 peaks에서 표시 창(view) 구간만 잘라 막대로
+  // Lane waveform: slice view interval from full-track peaks into bars
   const peaks = useMemo(() => audioControls.getPeaks(), [audioPath, duration]);
   const waveBars = useMemo(() => {
     if (!peaks || duration <= 0 || viewEnd <= viewStart) return null;
@@ -108,7 +108,7 @@ export function CharSyncView() {
     return peaks.slice(i0, i1).map((v) => Math.min(1, Math.abs(v)));
   }, [peaks, duration, viewStart, viewEnd]);
 
-  // 재생 위치에서 지금 불리는 글자(편집 커서와 별개). 창 밖이면 -1.
+  // Character currently being sung at playhead (distinct from cursor). -1 if outside window.
   const playingIdx = useMemo(() => {
     if (currentTime < winStart || currentTime > winEnd) return -1;
     let idx = -1;
@@ -119,7 +119,7 @@ export function CharSyncView() {
     return idx;
   }, [syllables, currentTime, winStart, winEnd]);
 
-  // 찍힌 글자 아래 시간 마커(점선+시각). 글자 위치·라벨 폭을 측정해 겹치지 않게 배치.
+  // Time markers (dashed line + timestamp) under stamped characters, positioned without overlaps.
   const textRef = useRef<HTMLDivElement>(null);
   const measureRef = useRef<HTMLSpanElement>(null);
   const [marks, setMarks] = useState<TimeMark[]>([]);
@@ -135,9 +135,9 @@ export function CharSyncView() {
   useLayoutEffect(() => {
     const root = textRef.current;
     if (!root || !showGlyphTimeMarkers) { setMarks([]); setMarksHeight(0); return; }
-    // 실제 라벨 폭 측정(폰트 의존). 실패 시 보수적 기본값.
+    // Measure actual label width (font dependent). Conservative default on fallback.
     const labelW = (measureRef.current?.offsetWidth ?? 56) + MARK_GAP;
-    const levelRight: number[] = []; // 단계별 마지막 라벨 우측 끝
+    const levelRight: number[] = []; // Right edge of last label per level
     const out: TimeMark[] = [];
     let maxLabelLevel = 0;
     for (let i = 0; i < syllables.length; i++) {
@@ -148,7 +148,7 @@ export function CharSyncView() {
       const cx = el.offsetLeft + el.offsetWidth / 2;
       const left = cx - labelW / 2;
       const right = cx + labelW / 2;
-      // 겹치지 않는 가장 낮은 단계 찾기. 없으면 라벨 생략(틱만) → 겹침 0 보장.
+      // Find lowest non-overlapping level; omit label (tick only) if no fit -> guarantees zero overlap.
       let level = -1;
       for (let L = 0; L < MARK_LEVELS; L++) {
         if (levelRight[L] === undefined || levelRight[L] <= left) { level = L; break; }
@@ -165,7 +165,7 @@ export function CharSyncView() {
     setMarksHeight(out.length ? (anyLabel ? maxLabelLevel * MARK_STEP + MARK_LABEL_H + 6 : MARK_TICK + 4) : 0);
   }, [syllables, activeLineId, syncUnit, measureKey, showGlyphTimeMarkers, lyricsFontScale]);
 
-  // 활성 줄이 바뀌면 활성 글자를 첫 미입력(없으면 첫 글자)으로
+  // When active line changes, set active character to first unstamped (or first character)
   useEffect(() => {
     if (stampableIdx.length === 0) {
       setActiveSyllable(0);
@@ -176,18 +176,18 @@ export function CharSyncView() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeLineId, syncUnit, stampableIdx.length]);
 
-  // keydown 핸들러가 1회 캡처되므로 lines는 클로저 대신 최신 상태에서 읽는다
+  // keydown handler is captured once, so read lines from latest state instead of closure
   const gotoLine = (i: number) => {
     const l = useLrcStore.getState().doc.lines[i];
     if (l) setActiveLineId(l.id);
   };
 
-  // 활성 줄이 없으면 첫 줄로 (글자 모드 진입 시 선택 보장)
+  // If no active line, default to first line (ensures selection when entering syllable mode)
   useEffect(() => {
     if (!activeLineId && lines.length > 0) setActiveLineId(lines[0].id);
   }, [activeLineId, lines, setActiveLineId]);
 
-  // 최신 상태 스냅샷 (키 핸들러에서 참조)
+  // Latest state snapshot (referenced in key handlers)
   const stateRef = useRef({
     line,
     syllables,
@@ -200,7 +200,7 @@ export function CharSyncView() {
   const stampActive = () => {
     const { line: ln, syllables: syl, stampableIdx: sidx, lineIdx: li } = stateRef.current;
     if (!ln) return;
-    // 스탬프할 글자가 없는 줄(빈 구분선)이면 다음 줄로 건너뜀
+    // Skip to next line if current line has no stampable characters (empty separator)
     if (sidx.length === 0) { gotoLine(li + 1); return; }
     const idx = useLrcStore.getState().activeSyllableIndex;
     if (!syl[idx] || !isStampable(syl[idx])) return;
@@ -210,7 +210,7 @@ export function CharSyncView() {
     const pos = sidx.indexOf(idx);
     const nextIdx = sidx[pos + 1];
     if (nextIdx != null) setActiveSyllable(nextIdx);
-    else gotoLine(li + 1); // 마지막 글자면 다음 줄로
+    else gotoLine(li + 1); // Advance to next line if last character
   };
 
   const moveActive = (dir: number) => {
@@ -223,7 +223,7 @@ export function CharSyncView() {
     else gotoLine(li + 1);
   };
 
-  // 현재 글자 시각 미세조정 (Shift+←/→). 이웃 글자 시각 사이로 클램프 + 탐색.
+  // Nudge current character timestamp (Shift+Left/Right). Clamp between neighbor times + seek.
   const nudge = (delta: number) => {
     const { line: ln, syllables: syl } = stateRef.current;
     if (!ln) return;
@@ -241,20 +241,20 @@ export function CharSyncView() {
     ctrl.seekTo(nt);
   };
 
-  // ←→=글자 이동(Shift=미세조정, 고정) · stamp/prevLine=사용자 단축키
+  // Left/Right = move char (Shift=nudge, fixed); stamp/prevLine = user hotkeys
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const inInput =
         e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement;
       if (inInput) return;
-      // 모달이 열려 있으면 글자 모드 키가 모달 뒤에서 동작하지 않게 차단
+      // Prevent syllable mode keys from firing behind active modals
       if (anyModalOpen()) return;
-      // 글자 이동/미세조정(고정)
+      // Character navigation / nudge (fixed)
       if (e.code === "ArrowLeft" && e.shiftKey) { e.preventDefault(); nudge(-0.05); return; }
       if (e.code === "ArrowRight" && e.shiftKey) { e.preventDefault(); nudge(0.05); return; }
       if (e.code === "ArrowLeft") { e.preventDefault(); moveActive(-1); return; }
       if (e.code === "ArrowRight") { e.preventDefault(); moveActive(1); return; }
-      // 사용자 단축키(stamp/prevLine). 수식자 조합 제외.
+      // User hotkeys (stamp/prevLine), excluding modifier combinations.
       if (e.ctrlKey || e.metaKey || e.altKey) return;
       const kb = normalizeKeybindings(useSettingsStore.getState().keybindings);
       const action = matchAction(e.code, kb);
@@ -269,11 +269,11 @@ export function CharSyncView() {
   const laneRef = useRef<HTMLDivElement>(null);
   const dragCleanupRef = useRef<(() => void) | null>(null);
 
-  // 드래그 도중 언마운트되면 window 리스너 정리
+  // Clean up window listeners if unmounted during drag
   useEffect(() => () => dragCleanupRef.current?.(), []);
 
-  // 글자를 "현재 재생 시간"으로 찍고 다음 글자를 준비(활성)로. 재생헤드는 건드리지 않음.
-  // recordHistory=false면 히스토리 미기록(칠하기 드래그 도중 글자들을 1회 undo로 묶기 위함).
+  // Stamp character with current playback time and advance active char. Playhead untouched.
+  // recordHistory=false skips history (bundles paint drag into single undo).
   const stampGlyphAt = (index: number, recordHistory = true) => {
     const { line: ln, syllables: syl, stampableIdx: sidx } = stateRef.current;
     if (!ln || !syl[index] || !isStampable(syl[index])) return;
@@ -284,10 +284,10 @@ export function CharSyncView() {
     if (nextIdx != null) setActiveSyllable(nextIdx);
   };
 
-  // 글자 위 드래그 = 칠하기: 재생 중 글자 위를 끌면 지나는 글자가 현재 재생 시간으로 찍히고
-  // 다음 글자가 준비됨(재생헤드 이동/스크럽 없음). 단순 클릭 = 그 글자를 활성(준비)으로 선택만.
+  // Dragging across characters = paint: dragging while playing stamps passed characters at current time
+  // and prepares next char (no scrub). Plain click selects character as active.
   const beginDrag = (index: number, e: React.MouseEvent) => {
-    if (!line || e.button !== 0) return; // 좌클릭만 (우클릭은 글자 지우기)
+    if (!line || e.button !== 0) return; // Left click only (right click erases char)
     e.preventDefault();
     const startX = e.clientX;
     let painting = false;
@@ -298,12 +298,12 @@ export function CharSyncView() {
       if (!painting) {
         if (Math.abs(ev.clientX - startX) <= 5) return;
         painting = true;
-        stampGlyphAt(index, true); // 칠하기 시작 = 히스토리 1회 기록
+        stampGlyphAt(index, true); // Start paint = record 1 history entry
         lastIdx = index;
         return;
       }
       const el = document.elementFromPoint(ev.clientX, ev.clientY) as HTMLElement | null;
-      // 마지막 공백 셀까지 칠이 이어지면 다음 줄로 (드래그 1회당 한 번만)
+      // Advance to next line when painting reaches trailing space cell (once per drag)
       if (el?.getAttribute?.("data-glyph-end") != null) {
         if (!advancedViaEnd) {
           advancedViaEnd = true;
@@ -312,7 +312,7 @@ export function CharSyncView() {
         }
         return;
       }
-      // 커서 아래 글자 판별 → 새 글자에 진입하면 현재 재생 시간으로 찍기 (히스토리 미기록=배치)
+      // Determine character under cursor -> stamp at current time upon entering new char (batched)
       const attr = el?.getAttribute?.("data-glyph");
       if (attr == null) return;
       advancedViaEnd = false;
@@ -328,14 +328,14 @@ export function CharSyncView() {
     };
     const up = () => {
       cleanup();
-      if (!painting) setActiveSyllable(index); // 단순 클릭 = 선택만(찍지 않음)
+      if (!painting) setActiveSyllable(index); // Click = select only (do not stamp)
     };
     dragCleanupRef.current = cleanup;
     window.addEventListener("mousemove", move);
     window.addEventListener("mouseup", up);
   };
 
-  // 레인 = 탐색(내비게이션) 전용. 누르거나 끌어서 재생 위치 이동(글자 시각엔 영향 없음).
+  // Lane = seek navigation only. Click/drag updates playhead without affecting character times.
   const beginLaneDrag = (e: React.MouseEvent) => {
     if (e.button !== 0) return;
     e.preventDefault();
@@ -373,7 +373,7 @@ export function CharSyncView() {
     if (line) clearLineSyllables(line.id);
   };
 
-  // 우클릭: 그 글자의 시각만 제거
+  // Right click: erase timestamp of this character
   const clearGlyph = (index: number) => {
     if (!line || syllables[index].time === null) return;
     commitSyllables(line.id, syllables.map((s, i) => (i === index ? { ...s, time: null } : s)));
@@ -387,12 +387,12 @@ export function CharSyncView() {
     );
   }
 
-  // readout: 현재 활성 글자
+  // Readout: current active character
   const readoutSyl = syllables[activeSyllableIndex];
   const readoutText = readoutSyl && isStampable(readoutSyl) ? readoutSyl.text.trim() : "—";
   const readoutTime = readoutSyl && readoutSyl.time !== null ? formatTimestamp(readoutSyl.time) : "--:--.--";
 
-  // 활성 줄 글자 진행도
+  // Active line character progress
   const glyphTotal = stampableIdx.length;
   const glyphDone = stampableIdx.filter((i) => syllables[i].time !== null).length;
 
@@ -596,7 +596,7 @@ export function CharSyncView() {
   );
 }
 
-// 줄 점 네비게이터: lines/활성 줄이 바뀔 때만 갱신 → 재생 중 매 프레임 재렌더 방지
+// Line navigator dots: update only when lines or active line change -> prevents per-frame re-renders
 const LineDots = memo(function LineDots({
   lines, activeIdx, onSelect,
 }: {
@@ -627,7 +627,7 @@ const LineDots = memo(function LineDots({
   );
 });
 
-// 파형 막대는 시간 창(window)이 바뀔 때만 갱신 → 재생 중 매 프레임 재렌더 방지
+// Waveform bars: update only when time window changes -> prevents per-frame re-renders
 const LaneWaveform = memo(function LaneWaveform({ bars }: { bars: number[] | null }) {
   if (!bars) return null;
   return (

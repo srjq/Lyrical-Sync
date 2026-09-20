@@ -74,7 +74,7 @@ export function YtdlpSection() {
         if (total > 0) setDlPercent(Math.round((downloaded / total) * 100));
         if (done) {
           // Exit downloading state immediately — don't block on version check.
-          // refresh() runs in background; "확인 중…" shows during that time.
+          // refresh() runs in background; "checking..." shows during that time.
           setDlPercent(100);
           setDownloading(false);
           refresh();
@@ -127,7 +127,7 @@ export function YtdlpSection() {
     <div className="p-5 flex flex-col gap-5">
       <p className="text-xs text-zinc-500 leading-relaxed">{t.ytdlpInfoText}</p>
 
-      {/* 설치 상태 */}
+      {/* Installation status */}
       <div className="flex flex-col gap-2">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -194,7 +194,7 @@ export function YtdlpSection() {
 
       <div className="border-t border-zinc-800" />
 
-      {/* YouTube 모드 토글 */}
+      {/* YouTube mode toggle */}
       <div className="flex items-center justify-between">
         <div className="flex flex-col gap-0.5">
           <span className="text-sm font-medium text-zinc-200">{t.youtubeModeLabel}</span>
@@ -225,7 +225,7 @@ export function YtdlpSection() {
 
       <div className="border-t border-zinc-800" />
 
-      {/* 오디오 품질 */}
+      {/* Audio quality */}
       <div className="flex flex-col gap-2">
         <span className="text-sm font-medium text-zinc-200">{t.ytdlpAudioQuality}</span>
         <div className="flex flex-col gap-1.5">
@@ -252,7 +252,7 @@ export function YtdlpSection() {
 
       <div className="border-t border-zinc-800" />
 
-      {/* 쿠키 파일 */}
+      {/* Cookie file */}
       <div className="flex flex-col gap-2">
         <span className="text-sm font-medium text-zinc-200">{t.ytdlpCookiesFile}</span>
         <p className="text-xs text-zinc-500">{t.ytdlpCookiesFileDesc}</p>
@@ -279,7 +279,7 @@ export function YtdlpSection() {
 
       <div className="border-t border-zinc-800" />
 
-      {/* 프록시 */}
+      {/* Proxy */}
       <div className="flex flex-col gap-2">
         <span className="text-sm font-medium text-zinc-200">{t.ytdlpProxy}</span>
         <div className="flex gap-2">

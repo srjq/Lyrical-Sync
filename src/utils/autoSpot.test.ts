@@ -3,7 +3,7 @@ import { detectSpeechSegments } from "./autoSpot";
 
 const SR = 1000; // 1kHz — 1 sample = 1ms, 20ms window = 20 samples
 
-// -1..1 사인파 구간(=충분히 큰 RMS)을 만들어 "발화"를 흉내낸다.
+// Simulate "speech" by generating a sine wave interval with sufficiently high RMS.
 function tone(durationSec: number): number[] {
   const n = Math.round(durationSec * SR);
   return Array.from({ length: n }, (_, i) => Math.sin((i / SR) * 2 * Math.PI * 50));
@@ -57,7 +57,7 @@ describe("detectSpeechSegments", () => {
   });
 
   it("never lets padding push a segment past the clip bounds", () => {
-    const samples = tone(0.5); // 발화가 클립 전체를 채움 — 앞뒤 여유 공간 없음
+    const samples = tone(0.5); // Speech fills entire clip — no padding before or after
     const segs = detectSpeechSegments(samples, SR, -35, 0.3, 0.3, 0.5);
     expect(segs[0].start).toBeGreaterThanOrEqual(0);
     expect(segs[0].end).toBeLessThanOrEqual(0.5);

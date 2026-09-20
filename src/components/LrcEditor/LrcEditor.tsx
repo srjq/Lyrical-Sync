@@ -20,7 +20,7 @@ import { LrcLineRow } from "./LrcLineRow";
 import { SyncModeToggle } from "./SyncModeToggle";
 import { EditorToolsMenu } from "./EditorToolsMenu";
 import { BulkActionsBar } from "./BulkActionsBar";
-// 글자 동기화 뷰·자동 스팟팅 모달은 각각 모드 전환/버튼 클릭 시에만 필요 → 지연 로드
+// Syllable sync view and auto-spotting modal are lazy loaded on demand
 const CharSyncView = lazy(() => import("./CharSyncView").then((m) => ({ default: m.CharSyncView })));
 const AutoSpotModal = lazy(() => import("../AudioPlayer/AutoSpotModal").then((m) => ({ default: m.AutoSpotModal })));
 
@@ -28,7 +28,7 @@ const AutoSpotModal = lazy(() => import("../AudioPlayer/AutoSpotModal").then((m)
 const LANG_CODE: Record<string, string> = { ko: "kor", en: "eng", ja: "jpn" };
 
 export function LrcEditor({ onPreview }: { onPreview: () => void }) {
-  // currentTime은 푸터에서만 쓰므로 구독에서 제외 → 재생 중 줄 목록이 매 프레임 리렌더되지 않음
+  // Exclude currentTime from subscription to prevent line list from re-rendering every frame
   const {
     doc, activeLineId,
     addLine, insertLinesAfter, updateLine, deleteLine,
@@ -59,13 +59,13 @@ export function LrcEditor({ onPreview }: { onPreview: () => void }) {
   const { t, lang } = useI18nStore();
   const { blankLineOffset, spotifyMode, deviceMode, lyricsFontScale, useVocalSeparation, useVad } = useSettingsStore();
   const serviceLoggedIn = useServiceStore((s) => s.isLoggedIn);
-  // 실제 Spotify 모드(로그인 + spotifyMode 활성)일 때만 서비스 모드로 간주.
-  // 단순 계정 연결만으로 AI 싱크를 막지 않도록 isReady 대신 spotifyMode 기준 사용.
+  // Consider service mode active only when logged in and spotifyMode is active.
+  // Uses spotifyMode rather than isReady so account connection alone does not block AI sync.
   const isServiceMode = serviceLoggedIn && spotifyMode;
   const serviceActive = isServiceMode;
-  // AI 자동 동기화는 로컬 오디오가 있는 파일/YouTube 모드에서만 의미가 있음.
-  // Spotify는 로그인 전이어도, 기기 감지는 항상 로컬 오디오가 없으므로 둘 다 차단
-  // (로그인 여부로 판단하는 isServiceMode와 달리 spotifyMode 자체로 판단).
+  // AI Auto-Sync is only applicable in file/YouTube modes with local audio.
+  // Blocks both Spotify and device detection modes as they lack local audio files
+  // (judged by spotifyMode itself, unlike isServiceMode).
   const aiSyncModeUnsupported = spotifyMode || deviceMode;
   const { lines } = doc;
 
@@ -84,7 +84,7 @@ export function LrcEditor({ onPreview }: { onPreview: () => void }) {
   const [showScale, setShowScale] = useState(false);
   const [showAutoSpot, setShowAutoSpot] = useState(false);
   const [showValidation, setShowValidation] = useState(false);
-  // 줄 다중선택(일괄 작업)
+  // Multi-line selection (bulk actions)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [selAnchor, setSelAnchor] = useState<string | null>(null);
 
@@ -94,24 +94,24 @@ export function LrcEditor({ onPreview }: { onPreview: () => void }) {
   const [matchPos, setMatchPos] = useState(0);
   const findInputRef = useRef<HTMLInputElement>(null);
 
-  // 타임스탬프 인라인 편집 상태 (좌클릭 시 직접 시간 입력)
+  // Inline timestamp editing state (direct time input on left click)
   const [editingTsId, setEditingTsId] = useState<string | null>(null);
   const [editTsValue, setEditTsValue] = useState("");
 
-  // Esc 취소 시 input 언마운트로 onBlur가 commit을 유발하지 않도록 가드
+  // Guard against onBlur triggering commit when input unmounts on Esc cancellation
   const tsEditCancel = useRef(false);
 
-  // 글자 동기화된 줄의 텍스트 수정 경고 / 단위 변경 경고
+  // Warning when editing text or changing units of syllable-synced lines
   const [pendingTextEdit, setPendingTextEdit] = useState<{ id: string; text: string } | null>(null);
   const [pendingUnit, setPendingUnit] = useState<SyncUnit | null>(null);
   const [pendingAiSync, setPendingAiSync] = useState(false);
-  // 드래그 재정렬 상태
+  // Drag reorder state
   const [dragIdx, setDragIdx] = useState<number | null>(null);
   const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
 
   const charMode = syncMode === "char";
 
-  // 텍스트 입력: 글자 타이밍이 있는 줄이면 경고 후 재토큰화 동의 받기
+  // Text edit: prompt confirmation before re-tokenizing if line has syllable timings
   const handleTextChange = (id: string, value: string) => {
     const ln = lines.find((l) => l.id === id);
     if (ln?.syllables?.some((s) => s.time !== null)) {
@@ -125,7 +125,7 @@ export function LrcEditor({ onPreview }: { onPreview: () => void }) {
     setPendingTextEdit(null);
   };
 
-  // 단위 변경: 활성 줄에 글자 타이밍이 있으면 경고 후 해당 줄 초기화
+  // Unit change: prompt confirmation and reset line if active line has syllable timings
   const handleUnitChange = (u: SyncUnit) => {
     if (u === syncUnit) return;
     const active = lines.find((l) => l.id === activeLineId);
@@ -222,7 +222,7 @@ export function LrcEditor({ onPreview }: { onPreview: () => void }) {
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>, id: string) => {
     if (e.key === "Enter" && e.shiftKey) {
-      // Shift+Enter = 커서 위치에서 줄 분할
+      // Shift+Enter = split line at cursor position
       e.preventDefault();
       const caret = e.currentTarget.selectionStart ?? e.currentTarget.value.length;
       const newId = splitLine(id, caret);
@@ -250,7 +250,7 @@ export function LrcEditor({ onPreview }: { onPreview: () => void }) {
     const after = currentText.slice(selEnd);
     const pasteLines = pasted.split(/\r?\n/);
 
-    // 텍스트가 바뀌므로 글자 동기화 토큰은 무효화
+    // Invalidate syllable sync tokens since text has changed
     updateLine(id, { text: before + pasteLines[0], syllables: undefined });
 
     const restTexts = pasteLines.slice(1);
@@ -260,17 +260,17 @@ export function LrcEditor({ onPreview }: { onPreview: () => void }) {
     pendingFocusId.current = newId;
   };
 
-  // 타임스탬프 검증 경고
+  // Timestamp validation warnings
   const warnings = useMemo(() => validateTimestamps(lines), [lines]);
 
-  // 완성도 통계: 텍스트 있는 줄 중 타임스탬프가 찍힌 비율
+  // Completion stats: ratio of stamped lines among text-containing lines
   const stats = useMemo(() => {
     const nonEmpty = lines.filter((l) => l.text.trim() !== "");
     const stamped = nonEmpty.filter((l) => l.timestamp !== null).length;
     return { total: nonEmpty.length, stamped, pct: nonEmpty.length ? Math.round((stamped / nonEmpty.length) * 100) : 0 };
   }, [lines]);
 
-  // 이슈 목록: 경고(중복/순서) + 미입력(텍스트 있는데 타임스탬프 없음)
+  // Issues: warnings (duplicates/ordering) + unstamped (text without timestamp)
   type Issue = { id: string; lineNo: number; text: string; type: "duplicate" | "outOfOrder" | "unstamped" };
   const issues = useMemo(() => {
     const out: Issue[] = [];
@@ -288,7 +288,7 @@ export function LrcEditor({ onPreview }: { onPreview: () => void }) {
     setShowValidation(false);
   };
 
-  // 줄 클릭: Shift=범위 선택, Ctrl/⌘=토글, 일반=단일 선택+시크(기존 동작)
+  // Line click: Shift=range select, Ctrl/Cmd=toggle, click=single select + seek
   const handleRowClick = (e: React.MouseEvent, id: string, idx: number) => {
     if (e.shiftKey && selAnchor) {
       const aIdx = lines.findIndex((l) => l.id === selAnchor);
@@ -309,7 +309,7 @@ export function LrcEditor({ onPreview }: { onPreview: () => void }) {
       setActiveLineId(id);
       return;
     }
-    // 일반 클릭: 다중선택 해제 + 기존 동작(활성/시크/찾기)
+    // Normal click: clear multi-selection + standard action (select/seek)
     if (selectedIds.size > 0) setSelectedIds(new Set());
     setSelAnchor(id);
     setActiveLineId(id);
@@ -323,7 +323,7 @@ export function LrcEditor({ onPreview }: { onPreview: () => void }) {
     }
   };
 
-  // 매칭 줄 id 목록
+  // Matched line ID list
   const matchIds = useMemo(() => {
     if (!findText) return [];
     const needle = caseSensitive ? findText : findText.toLowerCase();
@@ -332,20 +332,20 @@ export function LrcEditor({ onPreview }: { onPreview: () => void }) {
       .map((l) => l.id);
   }, [lines, findText, caseSensitive]);
 
-  // matchPos 범위 보정
+  // Clamp matchPos within bounds
   useEffect(() => {
     if (matchIds.length === 0) return;
     setMatchPos((p) => Math.min(p, matchIds.length - 1));
   }, [matchIds.length]);
 
-  // 현재 매치로 스크롤 (포커스는 찾기 입력창에 유지)
+  // Scroll to current match (maintains focus in find input)
   useEffect(() => {
     if (!showFR || !findText || matchIds.length === 0) return;
     const id = matchIds[matchPos];
     rowRefs.current.get(id)?.scrollIntoView({ block: "nearest" });
   }, [matchPos, matchIds, findText, caseSensitive, showFR]);
 
-  // Ctrl/Cmd+F 열기
+  // Open via Ctrl/Cmd+F
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.code === "KeyF") {
@@ -390,7 +390,7 @@ export function LrcEditor({ onPreview }: { onPreview: () => void }) {
     const re = new RegExp(escaped, caseSensitive ? "" : "i");
     const newText = line.text.replace(re, replaceText);
     if (newText !== line.text) updateLine(id, { text: newText });
-    // 다음 매치로 이동 (matchIds는 갱신되므로 다음 렌더 후 자동 이동)
+    // Move to next match (auto-advances after next render as matchIds updates)
     setMatchPos((p) => (p < matchIds.length - 1 ? p + 1 : 0));
   }, [matchIds, matchPos, findText, replaceText, caseSensitive, lines, updateLine]);
 
@@ -410,7 +410,7 @@ export function LrcEditor({ onPreview }: { onPreview: () => void }) {
     runAiSync(language, blankLineOffset, useVocalSeparation, useVad);
   };
   const handleAiSync = () => {
-    // AI 정렬은 줄 단위 재정렬 → 기존 글자/단어 동기화가 삭제됨. 있으면 먼저 확인.
+    // AI alignment re-aligns at line level -> strips syllable sync. Confirm first if present.
     const hasGlyph = lines.some((l) => l.syllables?.some((s) => s.time !== null));
     if (hasGlyph) { setPendingAiSync(true); return; }
     runAiSyncNow();

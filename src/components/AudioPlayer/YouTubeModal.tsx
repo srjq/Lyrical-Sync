@@ -53,7 +53,7 @@ export function YouTubeModal({
         </div>
 
         {!youtubeDisclaimerAccepted ? (
-          /* 최초 1회 면책 동의 게이트 */
+          /* One-time initial disclaimer gate */
           <div className="p-5 flex flex-col gap-4">
             <p className="text-sm leading-relaxed text-zinc-300">{t.youtubeDisclaimer}</p>
             <div className="flex justify-end gap-2">

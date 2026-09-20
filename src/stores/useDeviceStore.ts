@@ -5,9 +5,9 @@ import { useSettingsStore } from "./useSettingsStore";
 import { useI18nStore } from "./useI18nStore";
 import { toast } from "./useToastStore";
 
-// Windows SMTC(System Media Transport Controls)로 이 PC에서 재생 중인 미디어를
-// 소스 앱 무관하게(Spotify 데스크톱, Apple Music, 브라우저 재생 등) 감지.
-// Spotify 원격 제어(useServiceStore)와 동일한 폴링+보간 패턴을 따름.
+// Detects currently playing media on this PC (Spotify desktop, Apple Music, browser, etc.)
+// regardless of source app using Windows SMTC / macOS MediaRemote.
+// Follows the same polling + interpolation pattern as Spotify remote control (useServiceStore).
 
 interface NowPlayingInfo {
   title: string;
@@ -28,7 +28,7 @@ interface DeviceState {
   artistName: string;
   albumName: string;
   sourceApp: string;
-  hasSession: boolean; // 감지된 세션이 있는지(재생 중이 아니어도 트랙 정보가 있으면 true)
+  hasSession: boolean; // Whether an active session is detected (true if track info exists even if paused)
   _lastKnownPositionMs: number;
   _lastStateTimestamp: number;
 
@@ -40,8 +40,8 @@ interface DeviceState {
 
 let pollingInterval: ReturnType<typeof setInterval> | null = null;
 let interpolationRaf: number | null = null;
-// 실패 스트릭당 1회만 알림 — 폴링은 계속하되(모드가 켜져 있는 한), 성공하면 리셋돼
-// 다음에 다시 끊기면 재알림된다.
+// Notify once per failure streak — polling continues while mode is active, resets upon success
+// so subsequent disconnects notify again.
 let hasNotifiedFailure = false;
 
 export const useDeviceStore = create<DeviceState>((set, get) => ({
@@ -113,7 +113,7 @@ async function pollOnce(): Promise<void> {
       return;
     }
 
-    // last_updated_unix_ms 이후 경과한 시간만큼 위치를 보정(폴링 지연 보상)
+    // Compensate position by elapsed time since last_updated_unix_ms (compensates for polling latency)
     const elapsedSinceUpdate = info.is_playing
       ? Math.max(0, Date.now() - info.last_updated_unix_ms)
       : 0;
@@ -142,8 +142,8 @@ async function pollOnce(): Promise<void> {
       if (useSettingsStore.getState().deviceMode) useLrcStore.getState().setCurrentTime(positionMs / 1000);
     }
   } catch {
-    // 어댑터 호출 자체가 실패(예: macOS 업데이트로 비공식 우회 경로가 막힘) — 폴링은
-    // 모드가 켜져 있는 한 계속 재시도하되, 알림은 실패 스트릭당 1회만 띄운다.
+    // Adapter invocation failed (e.g. macOS update blocks workaround) — polling retries
+    // while mode is on, but notification is displayed once per failure streak.
     if (!hasNotifiedFailure) {
       hasNotifiedFailure = true;
       toast.error(useI18nStore.getState().t.toast.deviceUnavailable);

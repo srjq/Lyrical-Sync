@@ -79,15 +79,15 @@ function createPlayer(accessToken: string): void {
   });
 
   player.addListener("not_ready", () => {
-    // SDK 기기가 오프라인이 됨 → deviceId 무효화(전환 대상에서 제외)
+    // SDK device went offline -> invalidate deviceId (exclude from transfer targets)
     useServiceStore.setState({ deviceId: null });
   });
 
-  // SDK 실패는 기존엔 무음으로 사라졌음. 원인 진단을 위해 노출.
-  // - initialization_error: 웹뷰가 EME/Widevine 등 미지원(네이티브 웹뷰에서 흔함)
-  // - authentication_error: 토큰/스코프 문제
-  // - account_error: Spotify Premium 아님(SDK 재생 불가)
-  // - playback_error: 재생 실패(주로 DRM)
+  // Expose SDK failures for diagnostics (previously failed silently).
+  // - initialization_error: webview lacks EME/Widevine support (common in native webviews)
+  // - authentication_error: token or scope issue
+  // - account_error: not Spotify Premium (SDK playback unavailable)
+  // - playback_error: playback failed (mostly DRM)
   const reportError = (kind: string) => ({ message }: { message: string }) => {
     useServiceStore.getState().setPlayerError(`${kind}: ${message}`);
     console.warn(`[Spotify SDK] ${kind}: ${message}`);
@@ -114,7 +114,7 @@ function stopPolling(): void {
 }
 
 async function pollOnce(): Promise<void> {
-  // Spotify 모드가 아니면 폴링 불필요 → 불필요한 API 호출·보간 중단(모드 진입 시 다음 틱부터 재개)
+  // Stop polling if not in Spotify mode — halts unnecessary API calls & interpolation
   if (!useSettingsStore.getState().spotifyMode) {
     useServiceStore.getState()._stopInterpolation();
     return;
@@ -130,8 +130,8 @@ async function pollOnce(): Promise<void> {
     if (!data?.item) return;
 
     const isPlaying = data.is_playing as boolean;
-    // progress_ms는 응답을 받기까지의 네트워크 왕복만큼 이미 과거 값.
-    // 재생 중이면 왕복의 절반을 더해 "현재"에 근접시킴(가사 하이라이트 지연 감소). 캡 750ms.
+    // progress_ms is already historical by the network roundtrip time before receiving response.
+    // If playing, add half of RTT to approximate "current" time (reduces lyric highlight lag). Capped at 750ms.
     const latencyComp = isPlaying ? Math.min(1500, Date.now() - t0) / 2 : 0;
     const positionMs = Math.round((data.progress_ms as number) + latencyComp);
     const track = data.item;
@@ -155,7 +155,7 @@ async function pollOnce(): Promise<void> {
       _lastKnownPositionMs: positionMs,
       _lastStateTimestamp: Date.now(),
     });
-    // Spotify 모드일 때만 문서에 반영
+    // Apply to document only in Spotify mode
     const inSpotifyMode = useSettingsStore.getState().spotifyMode;
     if (inSpotifyMode) {
       useLrcStore.getState().setMetadata({ title: track.name, artist: artistName, album: track.album.name }, true);

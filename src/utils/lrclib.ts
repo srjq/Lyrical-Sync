@@ -1,4 +1,4 @@
-// LRCLIB (lrclib.net) 가사 검색 — 무료·무인증·CORS 지원, 프론트 fetch 직접 호출.
+// LRCLIB (lrclib.net) lyrics search — free, no auth, CORS supported, called directly from frontend fetch.
 
 const BASE = "https://lrclib.net/api";
 
@@ -19,7 +19,7 @@ export interface LrcLibQuery {
   album?: string;
 }
 
-// 검색: track_name이 있으면 필드 검색, 없으면 q(합성어)로 폴백.
+// Search: field search if track_name exists, fallback to composite q otherwise.
 export async function lrclibSearch(q: LrcLibQuery): Promise<LrcLibResult[]> {
   const title = q.title?.trim() ?? "";
   const artist = q.artist?.trim() ?? "";
@@ -36,7 +36,7 @@ export async function lrclibSearch(q: LrcLibQuery): Promise<LrcLibResult[]> {
     params.set("q", query);
   }
 
-  // 네트워크 지연 시 모달이 무한 로딩에 걸리지 않도록 10초 타임아웃
+  // 10s timeout to prevent modal from infinite loading during network delay
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), 10000);
   try {
@@ -49,7 +49,7 @@ export async function lrclibSearch(q: LrcLibQuery): Promise<LrcLibResult[]> {
   }
 }
 
-// 문자열 정규화 후 0~1 유사도
+// 0-1 similarity score after string normalization
 function norm(s: string | null | undefined): string {
   return (s ?? "").toLowerCase().trim().replace(/\s+/g, " ");
 }
@@ -66,8 +66,8 @@ function similarity(a: string, b: string): number {
   return uni ? (inter / uni) * 0.6 : 0;
 }
 
-// 제목 > 아티스트 > 앨범 우선순위로 현재 곡과의 정확도 점수.
-// 사용자가 입력한 필드만 점수에 반영(빈 필드는 정렬에 영향 없음).
+// Accuracy score against current track with priority Title > Artist > Album.
+// Only user-entered fields affect score (empty fields do not impact sorting).
 export function scoreResult(r: LrcLibResult, q: LrcLibQuery): number {
   let s = 0;
   if (q.title?.trim()) s += 100 * similarity(r.trackName, q.title);
@@ -81,7 +81,7 @@ export function sortByAccuracy(results: LrcLibResult[], q: LrcLibQuery): LrcLibR
     .map((r) => ({ r, s: scoreResult(r, q) }))
     .sort((a, b) => {
       if (b.s !== a.s) return b.s - a.s;
-      // 정확도가 같으면 동기화 가사를 위로
+      // Prefer synced lyrics when accuracy scores match
       return (b.r.syncedLyrics ? 1 : 0) - (a.r.syncedLyrics ? 1 : 0);
     })
     .map((x) => x.r);

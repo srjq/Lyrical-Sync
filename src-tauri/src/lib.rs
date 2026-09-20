@@ -27,13 +27,13 @@ async fn write_lrc_file(path: String, content: String) -> Result<(), String> {
 
 #[tauri::command]
 async fn read_audio_file(path: String) -> Result<tauri::ipc::Response, String> {
-    // 바이트를 JSON(number[]) 대신 raw 바이너리로 반환 → 대용량 오디오도 빠름
+    // Return bytes as raw binary instead of JSON (number[]) -> fast even for large audio files
     std::fs::read(&path)
         .map(tauri::ipc::Response::new)
         .map_err(|e| e.to_string())
 }
 
-/// AIFF 등 WebView2 미지원 포맷을 WAV로 트랜스코딩해 임시 파일 경로를 반환합니다.
+/// Transcode formats not supported by WebView2 (such as AIFF) to WAV and return the temporary file path.
 #[tauri::command]
 async fn decode_audio_to_wav(path: String) -> Result<String, String> {
     use symphonia::core::audio::SampleBuffer;
@@ -115,8 +115,8 @@ struct AudioMetadata {
     album: String,
 }
 
-/// 오디오 파일 태그(ID3/Vorbis/MP4 등)에서 제목·아티스트·앨범을 읽습니다.
-/// 태그가 없거나 읽기 실패 시 빈 문자열을 돌려줍니다(프런트에서 빈 필드만 채움).
+/// Read title, artist, and album from audio file tags (ID3, Vorbis, MP4, etc.).
+/// Returns empty strings if tags are missing or read fails (frontend only fills empty fields).
 #[tauri::command]
 fn read_audio_metadata(path: String) -> Result<AudioMetadata, String> {
     use lofty::file::TaggedFileExt;
@@ -145,7 +145,7 @@ pub fn run() {
         .plugin(tauri_plugin_deep_link::init())
         .plugin(tauri_plugin_process::init())
         .setup(|app| {
-            // 업데이터는 데스크톱 전용(모바일 타깃엔 없음)
+            // Updater is desktop-only (not present on mobile targets)
             #[cfg(desktop)]
             app.handle().plugin(tauri_plugin_updater::Builder::new().build())?;
             Ok(())

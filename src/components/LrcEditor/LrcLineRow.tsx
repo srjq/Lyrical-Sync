@@ -3,10 +3,10 @@ import { type Translations } from "../../i18n/translations";
 import { formatDisplayTime } from "../../utils/lrcParser";
 import { LoopIcon } from "../AudioPlayer/icons";
 
-// LrcEditor 줄 하나의 렌더링: 드래그 재정렬 핸들·순번·타임스탬프(인라인 편집)·줄 반복
-// 토글·글자 동기화 배지·경고 아이콘·텍스트 입력·병합/복제/삭제 버튼.
-// 상호작용 상태(드래그·타임스탬프 편집 등)는 LrcEditor가 소유하고 이벤트 핸들러로 전달 —
-// 이 컴포넌트는 순수 렌더링(+ line 자체에서 파생되는 hasGlyphSync/tsClass만 내부 계산).
+// Renders single LrcEditor line: drag handle, line number, timestamp (inline edit), repeat,
+// syllable badge, warning icon, text input, and action buttons.
+// Interactive state is owned by LrcEditor and passed via handlers —
+// pure presentation component with derived glyph sync / timestamp classes.
 export function LrcLineRow({
   t, line, idx, isActive, isSelected, confidence, isMatch, isCurrentMatch, warning,
   loopLineId, lyricsFontScale,
@@ -109,7 +109,7 @@ export function LrcLineRow({
 
       <div className="shrink-0">
         {editingTsId === line.id ? (
-          // 좌클릭 시 인라인 편집: 숫자키로 MM:SS.xx 직접 입력
+          // Left-click inline editing: type MM:SS.xx directly with number keys
           <input
             autoFocus
             type="text"
@@ -126,7 +126,7 @@ export function LrcLineRow({
             className="font-mono text-xs px-2 py-0.5 rounded w-24 bg-zinc-700 text-indigo-200 border border-indigo-500 focus:outline-none placeholder-zinc-500"
           />
         ) : (
-          // 좌클릭 → 시간 직접 편집 / 우클릭 → 현재 재생 시간으로 설정
+          // Left-click -> edit time directly / Right-click -> set to current playback time
           <button
             onClick={(e) => { e.stopPropagation(); onStartTsEdit(); }}
             onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); onStampCurrentLine(); }}

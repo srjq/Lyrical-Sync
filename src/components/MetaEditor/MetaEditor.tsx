@@ -3,12 +3,12 @@ import { useLrcStore } from "../../stores/useLrcStore";
 import { useShallow } from "zustand/react/shallow";
 import { useI18nStore } from "../../stores/useI18nStore";
 import { serializeLrc } from "../../utils/lrcParser";
-// 검색/불러오기·업로드 모달은 버튼 클릭 시에만 필요 → 지연 로드(초기 번들 절감)
+// Lazy-load search/fetch and upload modals only when button clicked (reduces initial bundle)
 const LrcLibModal = lazy(() => import("../LrcLib/LrcLibModal").then((m) => ({ default: m.LrcLibModal })));
 const LrcLibPublishModal = lazy(() => import("../LrcLib/LrcLibPublishModal").then((m) => ({ default: m.LrcLibPublishModal })));
 
 export function MetaEditor() {
-  // currentTime 등에 리렌더되지 않도록 필요한 필드만 구독
+  // Subscribe only to relevant fields to avoid re-rendering on currentTime ticks
   const { doc, setMetadata, applyOffset, loadFromRawText } = useLrcStore(
     useShallow((s) => ({
       doc: s.doc, setMetadata: s.setMetadata, applyOffset: s.applyOffset, loadFromRawText: s.loadFromRawText,
@@ -21,10 +21,10 @@ export function MetaEditor() {
   const [showLrcLib, setShowLrcLib] = useState(false);
   const [showPublish, setShowPublish] = useState(false);
 
-  // 오프셋 입력은 로컬 문자열로 관리해 ""·"-"·음수 입력을 허용 (숫자 0 고정 방지)
+  // Manage offset as local string to allow "", "-", and negative input (avoids locking to 0)
   const [offsetStr, setOffsetStr] = useState(String(metadata.offset));
   useEffect(() => {
-    // 외부에서 offset이 바뀌면(파일 로드·오프셋 적용 등) 입력값 동기화
+    // Sync input value when external offset changes (file load, offset apply, etc.)
     if ((parseInt(offsetStr, 10) || 0) !== metadata.offset) setOffsetStr(String(metadata.offset));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [metadata.offset]);

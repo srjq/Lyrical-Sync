@@ -1,7 +1,7 @@
-// 기기에서 재생 중인 미디어(Spotify 데스크톱 앱, Apple Music, 브라우저 재생 등)를
-// 소스 앱 무관하게 감지·제어. Windows는 공식 문서화된 WinRT API(Windows.Media.Control),
-// macOS는 resources/mediaremote-adapter/에 동봉한 어댑터(아래 macOS 모듈 주석 참고)를 사용.
-// 그 외 플랫폼에서는 항상 빈 결과를 반환하는 스텁으로 컴파일된다.
+// Detect and control currently playing media (Spotify desktop app, Apple Music, browser playback, etc.)
+// regardless of source app. Windows uses official WinRT API (Windows.Media.Control),
+// macOS uses the adapter bundled in resources/mediaremote-adapter/ (see macOS module comments below).
+// On other platforms, compiles to a stub that always returns empty results.
 
 use serde::Serialize;
 
@@ -14,8 +14,8 @@ pub struct NowPlayingInfo {
     duration_ms: i64,
     is_playing: bool,
     source_app: String,
-    /// Unix epoch(ms) 기준 timeline 마지막 갱신 시각 — 프런트엔드가 Date.now() 기준으로
-    /// 보간(interpolation)할 때 앵커로 사용(Spotify 모드와 동일한 기법).
+    /// Last timeline update time based on Unix epoch (ms) — used as anchor by frontend when
+    /// interpolating against Date.now() (same technique as Spotify mode).
     last_updated_unix_ms: i64,
 }
 
@@ -26,11 +26,11 @@ mod platform {
     use windows::Media::Control::GlobalSystemMediaTransportControlsSessionManager;
     use windows::Win32::System::Com::{CoInitializeEx, COINIT_MULTITHREADED};
 
-    // WinRT DateTime 기준시각(1601-01-01 UTC)과 Unix epoch(1970-01-01 UTC)의 차이(100ns 틱 단위).
+    // Difference between WinRT DateTime epoch (1601-01-01 UTC) and Unix epoch (1970-01-01 UTC) in 100ns ticks.
     const EPOCH_DIFF_TICKS: i64 = 116_444_736_000_000_000;
 
-    // tokio 워커 스레드는 기본적으로 COM이 초기화돼 있지 않아 WinRT 호출 전 필요할 수 있음.
-    // 이미 초기화된 스레드에서 다시 불러도 안전(실패는 무시 — 대개 "이미 초기화됨" 의미).
+    // tokio worker threads do not have COM initialized by default, which may be needed before WinRT calls.
+    // Safe to call again on already initialized threads (ignores failure — usually means "already initialized").
     fn ensure_com_initialized() {
         unsafe {
             let _ = CoInitializeEx(None, COINIT_MULTITHREADED);
@@ -47,7 +47,7 @@ mod platform {
 
         let session = match manager.GetCurrentSession() {
             Ok(s) => s,
-            Err(_) => return Ok(None), // 활성 세션 없음
+            Err(_) => return Ok(None), // No active session
         };
 
         let media_props = session
@@ -60,7 +60,7 @@ mod platform {
         let artist = media_props.Artist().map(|s| s.to_string()).unwrap_or_default();
         let album = media_props.AlbumTitle().map(|s| s.to_string()).unwrap_or_default();
 
-        // 제목·아티스트 둘 다 비었으면 실질적으로 "재생 중인 게 없음"으로 간주
+        // If both title and artist are empty, effectively treat as "nothing playing"
         if title.is_empty() && artist.is_empty() {
             return Ok(None);
         }
@@ -122,12 +122,12 @@ mod platform {
     }
 }
 
-// macOS는 시스템 전역 "지금 재생 중" 정보를 읽는 공식 API가 없다. 비공식 MediaRemote.framework는
-// macOS 15.4+부터 서드파티 프로세스의 직접 호출을 막아뒀지만(entitlement 검증 도입),
-// 시스템 바이너리 /usr/bin/perl은 Apple 서명 덕에 예외적으로 허용된다. 이 우회 경로를 이용하는
-// 오픈소스 어댑터(BSD-3-Clause, https://github.com/ungive/mediaremote-adapter)를
-// resources/mediaremote-adapter/에 동봉해 서브프로세스로 호출한다(직접 링크 없음).
-// App Store 경량판에서는 비공식 API 우회로 간주돼 리뷰를 통과하지 못하므로 제외 대상.
+// macOS has no official public API to read system-wide "Now Playing" info. The private MediaRemote.framework
+// blocks direct calls from third-party processes on macOS 15.4+ (due to entitlement verification),
+// but the system binary /usr/bin/perl is exceptionally allowed thanks to its Apple signature. Using this workaround,
+// the open-source adapter (BSD-3-Clause, https://github.com/ungive/mediaremote-adapter)
+// is bundled in resources/mediaremote-adapter/ and invoked as a subprocess (no direct linking).
+// Excluded from App Store builds as private API workarounds fail review.
 #[cfg(target_os = "macos")]
 mod platform {
     use super::NowPlayingInfo;
@@ -148,14 +148,14 @@ mod platform {
         playing: Option<bool>,
         #[serde(rename = "bundleIdentifier")]
         bundle_identifier: Option<String>,
-        /// 이 스냅샷이 실제로 갱신된 시각(ISO 8601, UTC). elapsedTime은 재생 앱이 값을 밀어줄
-        /// 때만 갱신되므로(매 폴링마다 새로 계산되는 게 아님) 이 필드로 보간 기준점을 잡아야
-        /// 프런트엔드의 "경과 시간 보정" 로직이 올바르게 동작한다(Windows LastUpdatedTime과 동일 역할).
+        /// The time this snapshot was actually updated (ISO 8601, UTC). Since elapsedTime is only updated
+        /// when the playback app pushes a value (not recalculated on every poll), using this field as the anchor
+        /// ensures frontend elapsed-time interpolation works correctly (same role as Windows LastUpdatedTime).
         timestamp: Option<String>,
     }
 
-    /// "YYYY-MM-DDTHH:MM:SS(.fff)?Z" 형식의 UTC 타임스탬프를 Unix epoch ms로 변환.
-    /// 외부 crate(chrono 등) 없이 처리하기 위한 최소 파서 — 어댑터 출력 형식이 고정적이라 충분함.
+    /// Convert UTC timestamp in "YYYY-MM-DDTHH:MM:SS(.fff)?Z" format to Unix epoch ms.
+    /// Minimal parser to avoid external crates (chrono, etc.) — sufficient since adapter output format is fixed.
     fn parse_iso8601_utc_ms(s: &str) -> Option<i64> {
         let s = s.strip_suffix('Z')?;
         let (date, time) = s.split_once('T')?;
@@ -221,14 +221,14 @@ mod platform {
 
         let title = info.title.unwrap_or_default();
         let artist = info.artist.unwrap_or_default();
-        // 제목·아티스트 둘 다 비었으면 실질적으로 "재생 중인 게 없음"으로 간주(Windows와 동일 규칙)
+        // If both title and artist are empty, treat as "nothing playing" (same rule as Windows)
         if title.is_empty() && artist.is_empty() {
             return Ok(None);
         }
 
-        // elapsedTime은 재생 앱이 실제로 값을 밀어줄 때만 갱신되므로, 어댑터가 함께 주는
-        // timestamp(그 스냅샷이 찍힌 시각)를 그대로 보간 앵커로 써야 한다. 파싱 실패 시에만
-        // 현재 시각으로 폴백(약간의 오차는 있어도 완전히 멈추는 것보다는 낫다).
+        // Since elapsedTime is only updated when the playback app actually pushes a value, the timestamp
+        // provided by the adapter (when the snapshot was taken) must be used as the interpolation anchor.
+        // Fallback to current time only if parsing fails (slight skew is better than freezing).
         let last_updated_unix_ms = info
             .timestamp
             .as_deref()

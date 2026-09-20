@@ -29,7 +29,7 @@ export function TimeShiftBar({
 
   const handleApply = () => {
     if (delta === 0) return;
-    onApply(from - 1, to - 1, delta); // 0-based 변환
+    onApply(from - 1, to - 1, delta); // Convert to 0-based
   };
 
   const step = (d: number) => setDelta((v) => Math.round((v + d) * 1000) / 1000);

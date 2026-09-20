@@ -4,44 +4,44 @@ import { type KeyAction, DEFAULT_KEYBINDINGS } from "../utils/keybindings";
 
 interface SettingsState {
   autoCheckUpdate: boolean;
-  /** 저장 경로가 지정된 파일에 대해 변경 시 자동 저장 */
+  /** Auto-save on change for files with a designated save path */
   autoSave: boolean;
   uiScale: number;
-  /** 커스텀 모델 저장 경로. "" = 앱 기본 경로 사용 */
+  /** Custom model storage path. "" = use default app path */
   modelsDir: string;
-  /** 빈 줄 타임스탬프 = 앞 가사 end + blankLineOffset 초 */
+  /** Empty line timestamp = previous lyric end + blankLineOffset seconds */
   blankLineOffset: number;
-  /** 글자/단어 동기화가 있어 Enhanced LRC로 저장될 때 알림 팝업 표시. false면 묻지 않고 저장 */
+  /** Show notification popup when saving as Enhanced LRC due to syllable/word sync. If false, save without prompting */
   showElrcSaveNotice: boolean;
-  /** 가사 편집 글꼴 크기 배율 (0.8 ~ 1.5, 기본값: 1.0) */
+  /** Lyric editor font size scale factor (0.8 to 1.5, default: 1.0) */
   lyricsFontScale: number;
-  /** 글자 동기화 모드에서 글자 아래 시간 마커 표시 */
+  /** Show time marker below character in syllable sync mode */
   showGlyphTimeMarkers: boolean;
-  /** 파형 대신/함께 스펙트로그램 표시 (음높이·배음 구조를 볼 때 유용) */
+  /** Show spectrogram instead of/alongside waveform (useful for inspecting pitch and harmonic structure) */
   showSpectrogram: boolean;
-  /** AI 정렬 시 Demucs 보컬 분리 사용(설치돼 있을 때). false면 원본 오디오로 정렬 */
+  /** Use Demucs vocal separation during AI alignment (when installed). If false, align with original audio */
   useVocalSeparation: boolean;
-  /** AI 정렬 시 보컬 활동 감지(VAD) 사용 — 빈 줄 정밀 배치 + 신뢰도 보정. 보컬 분리 필요 */
+  /** Use vocal activity detection (VAD) during AI alignment — precise empty line placement and confidence correction. Requires vocal separation */
   useVad: boolean;
-  /** 전역 단축키 바인딩(action → KeyboardEvent.code) */
+  /** Global shortcut bindings (action -> KeyboardEvent.code) */
   keybindings: Record<KeyAction, string>;
-  /** Spotify Developer App client_id (사용자 직접 입력) */
+  /** Spotify Developer App client_id (manually entered by user) */
   spotifyClientId: string;
-  /** Spotify 모드 활성화 여부 (로그인 상태와 독립적으로 UI 전환) */
+  /** Whether Spotify mode is active (switches UI independently of login state) */
   spotifyMode: boolean;
-  /** YouTube 모드 활성화 여부 */
+  /** Whether YouTube mode is active */
   youtubeMode: boolean;
-  /** 기기 감지 모드 활성화 여부(Windows SMTC로 로컬 재생 중인 미디어 감지, Windows 전용) */
+  /** Whether device detection mode is active (detects local media playback via Windows SMTC / macOS MediaRemote) */
   deviceMode: boolean;
-  /** yt-dlp 오디오 품질 */
+  /** yt-dlp audio quality */
   ytdlpAudioQuality: "best" | "192" | "128";
-  /** yt-dlp 쿠키 파일 경로 (로그인 필요 콘텐츠용) */
+  /** yt-dlp cookie file path (for content requiring login) */
   ytdlpCookiesFile: string;
-  /** yt-dlp 프록시 설정 */
+  /** yt-dlp proxy configuration */
   ytdlpProxy: string;
-  /** YouTube 다운로드 면책 고지에 1회 동의했는지 */
+  /** Whether user has agreed once to YouTube download disclaimer */
   youtubeDisclaimerAccepted: boolean;
-  /** 최근 연 파일(가사/오디오) 목록, 최신순 최대 8개 */
+  /** List of recently opened files (lyrics/audio), up to 8 items in reverse chronological order */
   recentFiles: RecentFileEntry[];
   setAutoCheckUpdate: (v: boolean) => void;
   setAutoSave: (v: boolean) => void;
@@ -64,7 +64,7 @@ interface SettingsState {
   setYtdlpCookiesFile: (v: string) => void;
   setYtdlpProxy: (v: string) => void;
   setYoutubeDisclaimerAccepted: (v: boolean) => void;
-  /** 최근 파일 항목 추가(같은 조합이 이미 있으면 맨 앞으로 이동, 최대 8개 유지) */
+  /** Add recent file entry (moves to front if same combination exists, keeps up to 8) */
   addRecentFile: (entry: { lrcPath: string | null; audioPath: string | null }) => void;
   clearRecentFiles: () => void;
 }

@@ -13,7 +13,7 @@ fn hex_to_bytes(s: &str) -> Vec<u8> {
         .collect()
 }
 
-/// SHA-256(prefix+nonce) ≤ target (big-endian 32바이트 비교)
+/// SHA-256(prefix+nonce) <= target (big-endian 32-byte comparison)
 fn nonce_meets_target(hash: &[u8], target: &[u8]) -> bool {
     for i in 0..target.len().min(hash.len()) {
         if hash[i] > target[i] {
@@ -25,7 +25,7 @@ fn nonce_meets_target(hash: &[u8], target: &[u8]) -> bool {
     true
 }
 
-/// 동기화 가사를 LRCLIB에 업로드(기여). PoW 챌린지를 풀어 토큰을 만든 뒤 publish.
+/// Upload (contribute) synced lyrics to LRCLIB. Solve PoW challenge to create a token, then publish.
 #[tauri::command]
 pub async fn lrclib_publish(
     track_name: String,
@@ -38,7 +38,7 @@ pub async fn lrclib_publish(
     use sha2::{Digest, Sha256};
     let client = reqwest::Client::new();
 
-    // 1) 챌린지 요청
+    // 1) Request challenge
     let ch: LrclibChallenge = client
         .post("https://lrclib.net/api/request-challenge")
         .header("User-Agent", "lyrical-sync")
@@ -49,7 +49,7 @@ pub async fn lrclib_publish(
         .await
         .map_err(|e| format!("챌린지 파싱 실패: {e}"))?;
 
-    // 2) PoW 풀기 (CPU 집약 → 블로킹 스레드)
+    // 2) Solve PoW (CPU-intensive -> blocking thread)
     let prefix = ch.prefix;
     let target = hex_to_bytes(&ch.target);
     let token = tokio::task::spawn_blocking(move || {
@@ -65,7 +65,7 @@ pub async fn lrclib_publish(
     .await
     .map_err(|e| format!("PoW 실패: {e}"))?;
 
-    // 3) 업로드
+    // 3) Upload
     let body = serde_json::json!({
         "trackName": track_name,
         "artistName": artist_name,

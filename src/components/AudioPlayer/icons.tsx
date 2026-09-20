@@ -23,7 +23,7 @@ export function StopIcon() {
 }
 
 export function SkipBackIcon({ size = 13 }: { size?: number }) {
-  // 채워진 이중 삼각형 (◀◀ 되감기)
+  // Filled double triangle (◀◀ rewind)
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor">
       <path d="M11 6 L11 18 L4 12 Z M18 6 L18 18 L11 12 Z" />
@@ -32,7 +32,7 @@ export function SkipBackIcon({ size = 13 }: { size?: number }) {
 }
 
 export function SkipFwdIcon({ size = 13 }: { size?: number }) {
-  // 채워진 이중 삼각형 (▶▶ 빨리감기)
+  // Filled double triangle (▶▶ fast forward)
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor">
       <path d="M6 6 L6 18 L13 12 Z M13 6 L13 18 L20 12 Z" />
@@ -41,7 +41,7 @@ export function SkipFwdIcon({ size = 13 }: { size?: number }) {
 }
 
 export function TriLeftIcon() {
-  // 채워진 홑 삼각형 (◀ ±1)
+  // Filled single triangle (◀ ±1)
   return (
     <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor">
       <path d="M15 6 L15 18 L7 12 Z" />
@@ -50,7 +50,7 @@ export function TriLeftIcon() {
 }
 
 export function TriRightIcon() {
-  // 채워진 홑 삼각형 (▶ ±1)
+  // Filled single triangle (▶ ±1)
   return (
     <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor">
       <path d="M9 6 L9 18 L17 12 Z" />

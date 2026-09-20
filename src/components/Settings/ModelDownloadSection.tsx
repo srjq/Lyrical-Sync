@@ -216,7 +216,7 @@ export function ModelDownloadSection() {
           [model.id]: { status: "not-installed", progress: 0, _completedBytes: 0, _curFileIndex: -1, _curFileTotal: 0 },
         }));
       } else {
-        // 취소가 아닌 실제 실패(네트워크·해시 불일치 등): 에러 상태 + 알림
+        // Genuine failure (network error, hash mismatch, etc.) rather than cancellation: set error state + toast
         setStates((prev) => ({ ...prev, [model.id]: { status: "error", progress: 0, error: String(e) } }));
         toast.error(t.toast.modelDownloadFailed.replace("{name}", model.name));
       }
@@ -325,7 +325,7 @@ export function ModelDownloadSection() {
 
       <div className="border-t border-zinc-800" />
 
-      {/* 정렬에 사용 (선택) */}
+      {/* Used for alignment (optional) */}
       <div className="flex flex-col gap-2">
         <span className="text-xs font-semibold text-zinc-400 uppercase tracking-wide">{t.aiUsageTitle}</span>
         {(() => {

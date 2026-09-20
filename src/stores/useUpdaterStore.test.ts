@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 
-// zustand persist(useSettingsStore, useLrcStore 경유)용 최소 localStorage 폴리필 (node 환경)
+// Minimal localStorage polyfill for zustand persist (via useSettingsStore, useLrcStore) (node environment)
 if (typeof globalThis.localStorage === "undefined") {
   const m = new Map<string, string>();
   globalThis.localStorage = {
@@ -18,7 +18,7 @@ const check = vi.fn();
 const relaunch = vi.fn();
 const saveRecoverySnapshot = vi.fn();
 
-// useUpdaterStore가 useLrcStore를 경유해 이 모듈들을 끌어오므로 함께 스텁
+// Stub these modules as useUpdaterStore pulls them in via useLrcStore
 vi.mock("@tauri-apps/api/core", () => ({ invoke: (...args: unknown[]) => invoke(...args) }));
 vi.mock("@tauri-apps/api/event", () => ({ listen: vi.fn(() => Promise.resolve(() => {})) }));
 vi.mock("@tauri-apps/plugin-dialog", () => ({ open: vi.fn(), save: vi.fn() }));

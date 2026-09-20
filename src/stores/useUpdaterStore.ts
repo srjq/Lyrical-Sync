@@ -10,10 +10,10 @@ export type UpdaterStatus =
 interface UpdaterState {
   status: UpdaterStatus;
   version: string | null;
-  body: string | null; // 릴리즈 노트
-  progress: number; // 0~100, downloading 중에만 의미 있음
+  body: string | null; // Release notes
+  progress: number; // 0-100, meaningful only during downloading
   error: string | null;
-  _update: Update | null; // 내부 핸들(다운로드/설치 실행용), UI에서 직접 사용 안 함
+  _update: Update | null; // Internal handle for download/install execution, not used directly by UI
 
   checkForUpdate: (silent?: boolean) => Promise<void>;
   downloadAndInstall: () => Promise<void>;
@@ -71,12 +71,12 @@ export const useUpdaterStore = create<UpdaterState>((set, get) => ({
   },
 
   restart: async () => {
-    // 재시작으로 프로세스가 죽기 전, 디바운스된 자동저장/복구 스냅샷이 미처 못 돈 채로
-    // 최근 편집이 유실되지 않도록 즉시(디바운스 없이) 저장을 강제한다.
+    // Before process terminates upon restart, force immediate (non-debounced) save
+    // to prevent losing recent edits if debounced auto-save/recovery snapshot has not run yet.
     const lrc = useLrcStore.getState();
     if (lrc.isDirty) {
       if (lrc.lrcPath) {
-        try { await lrc.saveLrc(); } catch { /* 실패해도 아래 스냅샷이 안전망 */ }
+        try { await lrc.saveLrc(); } catch { /* Even on failure, snapshot below acts as safety net */ }
       }
       const after = useLrcStore.getState();
       if (after.isDirty) {

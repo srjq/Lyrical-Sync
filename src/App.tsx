@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, lazy, Suspense } from "react";
 import { AudioPlayer } from "./components/AudioPlayer/AudioPlayer";
 import { MetaEditor } from "./components/MetaEditor/MetaEditor";
 import { LrcEditor } from "./components/LrcEditor/LrcEditor";
-// 모달은 시작 시 불필요 → 지연 로드(초기 번들·파싱 절감)
+// Modals not needed at startup -> lazy loaded (reduces initial bundle & parse time)
 const PreviewModal = lazy(() => import("./components/Preview/PreviewModal").then((m) => ({ default: m.PreviewModal })));
 const SettingsModal = lazy(() => import("./components/Settings/SettingsModal").then((m) => ({ default: m.SettingsModal })));
 import { ModeSelectButton } from "./components/Service/ModeSelectButton";
@@ -43,7 +43,7 @@ const LYRICS_EXTS = ["lrc", "srt"];
 const fileExt = (p: string) => p.split(".").pop()?.toLowerCase() ?? "";
 
 function useGlobalKeys() {
-  // 액션은 안정 참조 → 셀렉터로 좁혀 currentTime 등 매 프레임 갱신에 리렌더되지 않게
+  // Actions have stable references -> narrow selector to avoid re-rendering on per-frame currentTime updates
   const { stampAndAdvance, goToPreviousLine, undo, redo } = useLrcStore(
     useShallow((s) => ({
       stampAndAdvance: s.stampAndAdvance,
@@ -67,7 +67,7 @@ function useGlobalKeys() {
         e.target instanceof HTMLInputElement ||
         e.target instanceof HTMLTextAreaElement;
 
-      // Cmd/Ctrl+Z 실행취소/다시실행 (재설정 불가, 예약)
+      // Cmd/Ctrl+Z Undo/Redo (reserved, not rebindable)
       const isMod = e.ctrlKey || e.metaKey;
       if (isMod && e.code === "KeyZ") {
         if (inInput || anyModalOpen()) return;
@@ -76,13 +76,13 @@ function useGlobalKeys() {
         else undo();
         return;
       }
-      // 수식자 조합은 사용자 단축키 대상 아님
+      // Key combos with modifiers are not user shortcut targets
       if (e.ctrlKey || e.altKey || e.metaKey) return;
 
       const action = matchAction(e.code, kb);
       if (!action || inInput) return;
 
-      // 재생 트랜스포트: 줄/글자 모드 공통(모달 열려도 미디어 제어 허용)
+      // Playback transport: shared across line/syllable modes (allows media control even when modal open)
       if (PLAYBACK_ACTIONS.includes(action)) {
         e.preventDefault();
         if (action === "skipBack5") controls.skip(-5);
@@ -94,7 +94,7 @@ function useGlobalKeys() {
         return;
       }
 
-      // stamp/prevLine: 글자 모드에선 CharSyncView가 처리, 모달 뒤에선 차단
+      // stamp/prevLine: handled by CharSyncView in syllable mode, blocked behind modals
       if (action === "stamp" || action === "prevLine") {
         if (syncMode === "char" || anyModalOpen()) return;
         e.preventDefault();
@@ -108,8 +108,8 @@ function useGlobalKeys() {
   }, [stampAndAdvance, goToPreviousLine, undo, redo, isServiceMode, deviceModeForKeys, syncMode, keybindings]);
 }
 
-// 저장 경로(lrcPath)가 지정된 파일에 한해, 변경 후 일정 시간 멈추면 자동 저장.
-// 새 문서(lrcPath 없음)는 저장 위치가 없으므로 자동 저장하지 않음.
+// Auto-save after a debounce period once editing pauses, for files with a designated save path.
+// New documents without lrcPath have no target destination, so they are not auto-saved.
 function useAutoSave() {
   const isDirty = useLrcStore((s) => s.isDirty);
   const lrcPath = useLrcStore((s) => s.lrcPath);
@@ -119,17 +119,17 @@ function useAutoSave() {
   useEffect(() => {
     if (!autoSave || !lrcPath || !isDirty) return;
     const id = setTimeout(() => {
-      // 자동저장: 성공은 조용히, 실패만 토스트로 알림
+      // Auto-save: silent on success, alert via toast only on failure
       useLrcStore.getState().saveLrc().catch(() => {
         toast.error(useI18nStore.getState().t.toast.saveFailed);
       });
     }, 1500);
     return () => clearTimeout(id);
-    // doc 변경마다 타이머 리셋 → 입력이 멈춘 뒤에만 저장(디바운스)
+    // Reset timer on doc changes -> save only after input pauses (debounced)
   }, [autoSave, lrcPath, isDirty, doc]);
 
-  // 미저장 작업 자동 복구 스냅샷: dirty면 디바운스로 저장, 저장되면(dirty 해제) 제거.
-  // 저장 경로가 없어도 보호되므로 autoSave와 독립적으로 동작.
+  // Snapshot for unsaved recovery: debounced save when dirty, pruned when clean.
+  // Operates independently of autoSave to protect even unsaved documents.
   useEffect(() => {
     if (!isDirty) { clearRecoverySnapshot(); return; }
     const id = setTimeout(() => {
@@ -140,8 +140,8 @@ function useAutoSave() {
   }, [isDirty, doc]);
 }
 
-// 시작 시 조용히(silent) 확인 — 새 버전이 있을 때만 스토어 상태가 "available"로 바뀌어
-// UpdateModal이 자동으로 뜸. 없거나 실패해도 아무 알림 없음(기존 동작과 동일).
+// Check silently at startup — store state becomes "available" only if an update exists,
+// which triggers UpdateModal automatically. Silent if no update or on error.
 function useAutoUpdateCheck(enabled: boolean) {
   useEffect(() => {
     if (!enabled) return;
@@ -153,7 +153,7 @@ function App() {
   useGlobalKeys();
   useAutoSave();
 
-  // 시작 시(이펙트 실행 전) 스냅샷을 캡처 — dirty 해제 이펙트가 지우기 전에 확보
+  // Capture snapshot at startup (before effects run) before clean effects clear it
   const [recovery, setRecovery] = useState<RecoverySnapshot | null>(() => {
     const snap = loadRecoverySnapshot();
     return snap && snap.doc.lines.length > 0 ? snap : null;
@@ -171,7 +171,7 @@ function App() {
   const [dropConflict, setDropConflict] = useState<
     { audio?: string; lyrics?: string; audioConflict: boolean; lyricsConflict: boolean } | null
   >(null);
-  // 셀렉터로 좁혀 재생 중 currentTime 갱신마다 App 전체가 리렌더되지 않게 함
+  // Narrow selector to prevent entire App from re-rendering on per-frame currentTime updates
   const { lrcPath, isDirty, openLrc, openAudio, saveLrc, saveLrcAs, newLrc, undo, redo, _history, _future } = useLrcStore(
     useShallow((s) => ({
       lrcPath: s.lrcPath, isDirty: s.isDirty,
@@ -187,7 +187,7 @@ function App() {
 
   useAutoUpdateCheck(autoCheckUpdate);
 
-  // 기기 감지 모드 진입/이탈에 따라 SMTC 폴링 시작/정지
+  // Start/stop OS media polling upon entering/exiting device mode
   useEffect(() => {
     const store = useDeviceStore.getState();
     if (deviceMode) store.startPolling();
@@ -195,10 +195,10 @@ function App() {
     return () => store.stopPolling();
   }, [deviceMode]);
 
-  // Spotify 모드에 진입했을 때만(저장된 세션이 있을 수 있는 경우) 키체인 조회 시도.
-  // 앱 시작 시 무조건 조회하면 Spotify를 한 번도 안 쓴 사용자도 매번 키체인 접근이
-  // 발생하므로, 실제로 모드에 들어갈 때만 지연 호출(설정에 spotifyMode가 저장돼 있어
-  // 재시작 시 바로 true일 수도 있음 — 그 경우도 이 effect가 커버).
+  // Attempt keychain lookup only upon entering Spotify mode (when stored session may exist).
+  // Querying unconditionally on launch would prompt keychain access for non-Spotify users,
+  // so defer lookup until mode is active (persisted spotifyMode in settings
+  // may be true on startup, which this effect also handles).
   useEffect(() => {
     if (spotifyMode && !isLoggedIn) tryRestoreSession();
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -246,13 +246,13 @@ function App() {
     }
   };
 
-  // 저장 결과를 토스트로 알림(취소 시 무알림, 실패 시 에러)
+  // Notify save outcome via toast (silent on cancel, error on failure)
   const runSave = (p: Promise<boolean>) => {
     p.then((written) => { if (written) toast.success(t.toast.saved); })
      .catch(() => toast.error(t.toast.saveFailed));
   };
 
-  // 글자/단어 동기화가 있어 E-LRC로 저장될 LRC 저장은 알림 팝업을 거쳐 실행
+  // Prompt confirmation popup before saving as Enhanced LRC when syllable sync is present
   const requestSaveLrc = (fn: () => Promise<boolean>) => {
     if (hasGlyphSync && showElrcSaveNotice) {
       pendingSaveRef.current = fn;
@@ -273,14 +273,14 @@ function App() {
 
   const handleOpenLrc = () => openLrc().catch(() => toast.error(t.toast.openFailed));
 
-  // 드롭된 파일을 실제로 연다 (오디오 → 오디오 경로, lrc/srt → 가사)
+  // Open dropped file (audio -> audio path, lrc/srt -> lyrics)
   const applyDrop = (d: { audio?: string; lyrics?: string }) => {
     const st = useLrcStore.getState();
     if (d.audio) st.setAudioPath(d.audio);
     if (d.lyrics) st.loadLyricsPath(d.lyrics).catch(() => toast.error(t.toast.openFailed));
   };
 
-  // 파일 드래그앤드롭 열기 (Tauri 네이티브 드롭 이벤트 → 파일 경로 제공)
+  // Drag & drop file opening (Tauri native drop event provides file paths)
   useEffect(() => {
     let cancelled = false;
     let unlisten: (() => void) | null = null;
@@ -288,7 +288,7 @@ function App() {
       .onDragDropEvent((event) => {
         const p = event.payload;
         if (p.type === "enter") {
-          // 지원 파일이 하나라도 있을 때만 오버레이 표시
+          // Show overlay only if at least one supported file is detected
           if (p.paths.some((x) => AUDIO_EXTS.includes(fileExt(x)) || LYRICS_EXTS.includes(fileExt(x)))) {
             setIsDragOver(true);
           }
@@ -300,7 +300,7 @@ function App() {
         setIsDragOver(false);
         const audio = p.paths.find((x) => AUDIO_EXTS.includes(fileExt(x)));
         const lyrics = p.paths.find((x) => LYRICS_EXTS.includes(fileExt(x)));
-        if (!audio && !lyrics) return; // 지원하지 않는 파일은 무시
+        if (!audio && !lyrics) return; // Ignore unsupported files
 
         const st = useLrcStore.getState();
         const audioConflict = !!audio && st.audioPath !== null;
@@ -316,7 +316,7 @@ function App() {
     return () => { cancelled = true; safeUnlisten(unlisten); };
   }, []);
 
-  // yt-dlp 설치 여부 (모드 메뉴의 YouTube 활성화 판단)
+  // yt-dlp installation state (determines YouTube mode availability in menu)
   useEffect(() => {
     let active = true;
     const check = () =>
@@ -331,7 +331,7 @@ function App() {
     return () => { active = false; safeUnlisten(unlisten); };
   }, []);
 
-  // 모드 전환 (ModeSelectButton과 동일한 동작 — 전환 시 재생 정지)
+  // Switch mode (same behavior as ModeSelectButton — halts playback on switch)
   const stopCurrentPlaybackForModeSwitch = () => {
     if (spotifyMode && isLoggedIn) pausePlayback();
     else audioControls.pause();
@@ -349,7 +349,7 @@ function App() {
     setSpotifyMode(false); setYoutubeMode(true); setDeviceMode(false);
   };
 
-  // 재생 컨트롤은 현재 모드(로컬/Spotify/기기 감지)에 맞게 선택
+  // Select playback controls suited to current mode (local / Spotify / device)
   const isServiceMode = isLoggedIn && spotifyMode;
   const playbackControls = deviceMode ? deviceControls : isServiceMode ? serviceControls : audioControls;
 
@@ -405,7 +405,7 @@ function App() {
         <div className="flex items-center gap-1.5 shrink-0">
           <ModeSelectButton />
           <div className="w-px h-5 bg-zinc-700 mx-0.5" />
-          {/* 파일 액션 그룹 */}
+          {/* File actions group */}
           <IconBtn onClick={handleNewLrc} title={t.newFileBtn}><NewFileIcon /></IconBtn>
           <IconBtn onClick={handleOpenLrc} title={t.openLrc}><OpenFolderIcon /></IconBtn>
           <RecentFilesMenu />

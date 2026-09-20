@@ -18,8 +18,7 @@ interface ServicePlayerPanelProps {
   onLoadCurrent?: () => void;
 }
 
-// Spotify 브랜드 색(green)으로 고정한 CtrlBtn — 공용 컴포넌트에 매 호출부마다
-// 색상 클래스를 반복해서 넘기지 않도록 하는 래퍼.
+// CtrlBtn wrapper fixed with Spotify green brand color to avoid repeating color classes.
 function SpotifyCtrlBtn(props: Omit<React.ComponentProps<typeof CtrlBtn>, "accentClass" | "activeClass">) {
   return (
     <CtrlBtn
@@ -38,7 +37,7 @@ export function ServicePlayerPanel({ onSpotifySearch, onLoadCurrent }: ServicePl
     toggleLoop,
   } = useServiceStore();
 
-  // Spotify 콘텐츠 출처표시: 트랙을 Spotify에서 열기 (spotify:track:ID → open.spotify.com)
+  // Spotify attribution: open track in Spotify (spotify:track:ID -> open.spotify.com)
   const trackUrl = trackUri?.startsWith("spotify:track:")
     ? `https://open.spotify.com/track/${trackUri.split(":")[2]}`
     : null;
@@ -52,7 +51,7 @@ export function ServicePlayerPanel({ onSpotifySearch, onLoadCurrent }: ServicePl
   return (
     <div className="flex flex-col gap-3 w-full select-none">
 
-      {/* Track info — 클릭 시 Spotify에서 열기(출처표시) */}
+      {/* Track info — click to open in Spotify (attribution) */}
       <TrackInfoHeader
         icon={<SpotifyGlyph />}
         iconBgClass="bg-green-500/15 text-green-400"
@@ -72,7 +71,7 @@ export function ServicePlayerPanel({ onSpotifySearch, onLoadCurrent }: ServicePl
         accentClass="bg-green-500"
       />
 
-      {/* 재생 컨트롤 한 줄: 정지(좌) · 전송(중앙) · 반복(우) */}
+      {/* Playback control row: Stop (left) · Transport (center) · Repeat (right) */}
       <div className="flex items-center gap-0.5">
         <SpotifyCtrlBtn onClick={() => serviceControls.stopAndReset()} title={t.tooltipStop}>
           <StopIcon />
@@ -115,7 +114,7 @@ export function ServicePlayerPanel({ onSpotifySearch, onLoadCurrent }: ServicePl
         <span className="shrink-0 w-9 text-right text-xs text-zinc-400 tabular-nums">{Math.round(volume * 100)}%</span>
       </div>
 
-      {/* 곡 검색/열기 버튼 + 기기 선택 */}
+      {/* Track search/open button + device selector */}
       <div className="flex gap-2">
         <button
           onClick={onLoadCurrent}

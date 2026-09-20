@@ -2,7 +2,7 @@ import { useLrcStore } from "../../stores/useLrcStore";
 import { useI18nStore } from "../../stores/useI18nStore";
 import { formatDisplayTime } from "../../utils/lrcParser";
 
-// currentTime만 구독하는 푸터 → 재생 중 이 작은 컴포넌트만 리렌더(줄 목록 영향 없음)
+// Footer subscribes to currentTime -> only this small component re-renders during playback
 export function CurrentTimeFooter() {
   const currentTime = useLrcStore((s) => s.currentTime);
   const { t } = useI18nStore();

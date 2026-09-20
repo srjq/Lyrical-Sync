@@ -24,11 +24,11 @@ export function KeybindingsSection() {
   useEffect(() => {
     if (!capturing) return;
     const onKey = (e: KeyboardEvent) => {
-      // 캡처 중엔 모든 키를 가로채 앱 동작/전역 단축키를 막음
+      // Intercept all keystrokes during capture to prevent triggering global shortcuts
       e.preventDefault();
       e.stopPropagation();
       if (e.code === "Escape") { setCapturing(null); setError(""); return; }
-      // 수식자 단독/조합은 무시(평키만 대기)
+      // Ignore modifier-only presses (awaiting plain key)
       if (e.ctrlKey || e.metaKey || e.altKey || MODIFIER_CODES.has(e.code)) return;
       if (RESERVED_CODES.has(e.code)) { setError(t.keys.reserved); return; }
       const conflict = conflictingAction(e.code, capturing, kb);

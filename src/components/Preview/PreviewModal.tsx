@@ -23,12 +23,12 @@ export function PreviewModal({ onClose }: { onClose: () => void }) {
   const playbackDuration = isServiceMode ? serviceDurationMs / 1000 : duration;
   const playbackIsPlaying = isServiceMode ? serviceIsPlaying : isPlaying;
 
-  // 인라인 타임스탬프 편집 상태
+  // Inline timestamp editing state
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState("");
   const editInputRef = useRef<HTMLInputElement>(null);
 
-  // 현재 시각 기준으로 활성 줄 인덱스 계산
+  // Compute active line index based on current playback time
   const activeIdx = useMemo(() => {
     let idx = -1;
     for (let i = 0; i < doc.lines.length; i++) {
@@ -38,8 +38,8 @@ export function PreviewModal({ onClose }: { onClose: () => void }) {
     return idx;
   }, [doc.lines, playbackTime]);
 
-  // 각 줄의 가라오케 종료 시각을 1회 O(n) 패스로 미리 계산
-  // (기존엔 줄마다 앞쪽 스캔 → 렌더당 O(n²)이 매 프레임 실행됐음)
+  // Precompute karaoke end time for each line in single O(n) pass
+  // (previously an O(n^2) backward scan executed on every frame)
   const lineEnds = useMemo(() => {
     const ends = new Array<number>(doc.lines.length);
     let nextStampedTs: number | null = null;
@@ -52,18 +52,18 @@ export function PreviewModal({ onClose }: { onClose: () => void }) {
     return ends;
   }, [doc.lines, playbackDuration]);
 
-  // 활성 줄이 바뀔 때 스크롤 (편집 중이 아닐 때만)
+  // Auto-scroll when active line changes (only when not editing)
   useEffect(() => {
     if (editingId) return;
     activeLineRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
   }, [activeIdx, editingId]);
 
-  // 편집 인풋 자동 포커스
+  // Auto-focus edit input
   useEffect(() => {
     if (editingId) editInputRef.current?.focus();
   }, [editingId]);
 
-  // ESC: 편집 중이면 편집 취소, 아니면 모달 닫기
+  // ESC: cancel edit if editing, otherwise close modal
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
@@ -94,15 +94,15 @@ export function PreviewModal({ onClose }: { onClose: () => void }) {
     setEditingId(null);
   }, [editValue, updateLine]);
 
-  // 줄 클릭 시 시크(+정지 상태면 재생). 재생 상태는 fresh로 읽어 목록 메모 의존성에서 제외
+  // Click line to seek (and play if stopped). Read fresh playback state to keep memo dependency clean
   const seekToLine = useCallback((ts: number) => {
     controls.seekTo(ts);
     const playing = isServiceMode ? useServiceStore.getState().isPlaying : useLrcStore.getState().isPlaying;
     if (!playing) controls.togglePlay();
   }, [controls, isServiceMode]);
 
-  // 줄 목록을 메모화 → 부모가 매 프레임(currentTime) 리렌더돼도 활성 줄 전환·편집 시에만 재구성.
-  // 활성 줄의 가라오케 채움은 KaraokeText가 시간을 자체 구독해 갱신.
+  // Memoize line list -> rebuilds only on active line change/edit even if parent re-renders on currentTime.
+  // Active line karaoke fill is updated via KaraokeText self-subscribing to time.
   const linesContent = useMemo(() => doc.lines.map((line, i) => {
     const dist = activeIdx === -1 ? 999 : Math.abs(i - activeIdx);
     const isActive = i === activeIdx;
@@ -193,7 +193,7 @@ export function PreviewModal({ onClose }: { onClose: () => void }) {
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-zinc-950">
-      {/* 진행 상태바 */}
+      {/* Progress bar */}
       <div
         className="shrink-0 h-1 bg-zinc-800 cursor-pointer group"
         onClick={handleSeek}
@@ -206,7 +206,7 @@ export function PreviewModal({ onClose }: { onClose: () => void }) {
         </div>
       </div>
 
-      {/* 상단 바 */}
+      {/* Top bar */}
       <div className="shrink-0 flex items-center justify-between px-6 py-4 border-b border-zinc-800/60">
         <div className="flex flex-col gap-0.5 min-w-0">
           <span className="text-white font-serif text-lg tracking-tight truncate leading-tight">
@@ -219,7 +219,7 @@ export function PreviewModal({ onClose }: { onClose: () => void }) {
           )}
         </div>
 
-        {/* 재생 컨트롤 */}
+        {/* Playback controls */}
         <div className="flex items-center gap-3 mx-6">
           <PreviewBtn onClick={() => skip(-5)} title="-5s">
             <SkipBackIcon /><span className="text-[10px] font-bold ml-0.5">5</span>
@@ -249,7 +249,7 @@ export function PreviewModal({ onClose }: { onClose: () => void }) {
         </button>
       </div>
 
-      {/* 가사 영역 */}
+      {/* Lyrics display area */}
       <div
         className="flex-1 min-h-0 overflow-y-auto py-20 px-8"
         style={{ scrollbarWidth: "none" }}
@@ -272,8 +272,8 @@ export function PreviewModal({ onClose }: { onClose: () => void }) {
   );
 }
 
-// 글자 단위 가라오케 채움: 각 글자를 시작~다음 시각 사이 진행도로 좌→우 채움
-// 시간을 자체 구독 → 부모(미리보기 목록)가 매 프레임 리렌더되지 않아도 활성 줄만 채움 갱신
+// Character karaoke wipe: fills character left-to-right between start and next timestamp.
+// Self-subscribes to time to update fill without re-rendering parent preview list on every frame
 function KaraokeText({
   syllables, lineEnd, isServiceMode,
 }: {
@@ -289,7 +289,7 @@ function KaraokeText({
       {syllables.map((s, i) => {
         if (!isStampable(s)) return <span key={i}>{s.text}</span>;
         if (s.time === null) return <span key={i} style={{ color: "#52525b" }}>{s.text}</span>;
-        // 다음 시각이 있는 글자(없으면 줄 종료)까지를 이 글자의 지속 구간으로
+        // Use interval until next stamped character (or line end) as duration for this character
         let nextT = lineEnd;
         for (let j = i + 1; j < syllables.length; j++) {
           if (syllables[j].time !== null) { nextT = syllables[j].time as number; break; }

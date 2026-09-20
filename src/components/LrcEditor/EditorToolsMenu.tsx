@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { type Translations } from "../../i18n/translations";
 
-// 도구 오버플로우: 찾기/바꾸기 · 시간 이동 · 타임스탬프 스케일 · 자동 스팟팅.
-// 열림 상태와 바깥 클릭 감지는 이 컴포넌트가 자체 소유.
+// Tools menu: Find/Replace, Time Shift, Scale Timestamps, Auto-spotting.
+// Owns open state and outside click detection.
 export function EditorToolsMenu({
   t, showFR, showTS, showScale, showAutoSpot,
   onToggleFR, onToggleTS, onToggleScale, onOpenAutoSpot,

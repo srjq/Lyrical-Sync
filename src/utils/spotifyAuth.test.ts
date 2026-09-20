@@ -1,8 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { generatePkce, buildAuthUrl, SPOTIFY_REDIRECT_URI, SPOTIFY_SCOPES } from "./spotifyAuth";
 
-// PKCE S256 트랜스폼(challenge = base64url(sha256(verifier)))을 독립적으로 재계산해
-// generatePkce()의 결과와 대조 — 랜덤값 자체를 고정하지 않고도 구현 정확성을 검증.
+// Independently recalculates PKCE S256 transform (challenge = base64url(sha256(verifier)))
+// and compares with generatePkce() — verifies correctness without fixing random values.
 async function expectedChallenge(verifier: string): Promise<string> {
   const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(verifier));
   return btoa(String.fromCharCode(...new Uint8Array(digest)))
