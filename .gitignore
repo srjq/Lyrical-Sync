@@ -15,6 +15,7 @@ src-tauri/gen/schemas
 *.tar.gz
 packaging/arch/src/
 packaging/arch/pkg/
+release-assets/
 
 # Logs
 logs

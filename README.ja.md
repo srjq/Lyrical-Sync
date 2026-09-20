@@ -6,8 +6,8 @@
 
 ![main](img/main_ja.png)
 
-![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows-blue)
-![Version](https://img.shields.io/badge/version-0.5.1-green)
+![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20macOS%20%7C%20Windows-blue)
+![Version](https://img.shields.io/badge/version-0.6.1-green)
 ![Tauri](https://img.shields.io/badge/Tauri-v2-24C8D8)
 ![React](https://img.shields.io/badge/React-19-61DAFB)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.8-3178C6)
@@ -52,12 +52,65 @@
 - **表示オプション** — UI スケール（70%〜130%）と歌詞のフォントサイズ調整。
 - **自動保存 & 更新確認** — 保存先が決まっている変更を自動保存し、新しいリリースがあれば通知します。
 - **対応音声フォーマット** — MP3、FLAC、WAV、OGG、Opus、M4A/AAC、AIFF/AIF。
+  - Linux（WebKitGTK）：MP3、FLAC、WAV、OGG、Opus は GStreamer を介してネイティブ対応。AIFF/AIF は Rust バックエンドが自動的に WAV へトランスコード。
   - macOS（WKWebView）：すべてのフォーマットをネイティブ対応。
   - Windows（WebView2）：AIFF/AIF は Rust バックエンドが自動的に WAV へトランスコード。
 
 ---
 
 ## インストール
+
+### Linux
+
+お使いのディストリビューションに合わせたパッケージを [Releases](../../releases) ページからダウンロードしてください：
+
+#### AppImage（汎用 / ポータブル）
+インストール不要で、ほぼすべての最新 64bit Linux ディストリビューションで動作します：
+1. `Lyrical Sync_0.6.1_amd64.AppImage` をダウンロードします。
+2. 実行権限を付与して起動します：
+   ```bash
+   chmod +x "Lyrical Sync_0.6.1_amd64.AppImage"
+   ./"Lyrical Sync_0.6.1_amd64.AppImage"
+   ```
+
+#### Arch Linux / CachyOS / Manjaro
+`pacman` でビルド済みパッケージをインストール：
+```bash
+sudo pacman -U lyrical-sync-0.6.1-1-x86_64.pkg.tar.zst
+```
+または同梱の PKGBUILD から直接ビルド：
+```bash
+cd packaging/arch
+makepkg -si
+```
+
+#### Debian / Ubuntu / Linux Mint / Pop!_OS（`.deb`）
+`apt` でインストール：
+```bash
+sudo apt install ./"Lyrical Sync_0.6.1_amd64.deb"
+```
+または `dpkg`：
+```bash
+sudo dpkg -i "Lyrical Sync_0.6.1_amd64.deb"
+sudo apt-get install -f
+```
+
+#### Fedora / RHEL / openSUSE（`.rpm`）
+`dnf` でインストール：
+```bash
+sudo dnf install ./"Lyrical Sync-0.6.1-1.x86_64.rpm"
+```
+openSUSE（`zypper`）：
+```bash
+sudo zypper install ./"Lyrical Sync-0.6.1-1.x86_64.rpm"
+```
+
+> **Linux システム要件**
+>
+> 必要に応じて WebKit2GTK および GStreamer プラグインがインストールされていることを確認してください：
+> - **Arch / CachyOS**: `sudo pacman -S webkit2gtk-4.1 gst-plugins-base gst-plugins-good gst-plugins-bad libsecret`
+> - **Debian / Ubuntu**: `sudo apt install libwebkit2gtk-4.1-0 gstreamer1.0-plugins-base gstreamer1.0-plugins-good gstreamer1.0-plugins-bad libsecret-1-0`
+> - **Fedora**: `sudo dnf install webkit2gtk4.1 gstreamer1-plugins-base gstreamer1-plugins-good gstreamer1-plugins-bad-free libsecret`
 
 ### macOS
 

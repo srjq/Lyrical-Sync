@@ -6,8 +6,8 @@ A desktop app for creating, syncing, and editing `.lrc` (LRC) lyric files
 
 ![main](img/main_en.png)
 
-![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows-blue)
-![Version](https://img.shields.io/badge/version-0.5.1-green)
+![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20macOS%20%7C%20Windows-blue)
+![Version](https://img.shields.io/badge/version-0.6.1-green)
 ![Tauri](https://img.shields.io/badge/Tauri-v2-24C8D8)
 ![React](https://img.shields.io/badge/React-19-61DAFB)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.8-3178C6)
@@ -52,12 +52,66 @@ A desktop app for creating, syncing, and editing `.lrc` (LRC) lyric files
 - **Display options** — UI scale (70%–130%) and adjustable lyrics font size.
 - **Auto-save & auto-update check** — saves changes to a known path automatically and notifies you when a new release is available.
 - **Supported audio formats** — MP3, FLAC, WAV, OGG, Opus, M4A/AAC, AIFF/AIF.
+  - Linux (WebKitGTK): MP3, FLAC, WAV, OGG, Opus supported natively via GStreamer; AIFF/AIF files are automatically transcoded to WAV via the Rust backend.
   - macOS (WKWebView): all formats natively supported.
   - Windows (WebView2): AIFF/AIF files are automatically transcoded to WAV via the Rust backend.
 
 ---
 
 ## Installation
+
+### Linux
+
+Download the package matching your distribution from the [Releases](../../releases) page:
+
+#### AppImage (Universal / Portable)
+Works on virtually all modern 64-bit Linux distributions without installation:
+1. Download `Lyrical Sync_0.6.1_amd64.AppImage`.
+2. Make it executable and run:
+   ```bash
+   chmod +x "Lyrical Sync_0.6.1_amd64.AppImage"
+   ./"Lyrical Sync_0.6.1_amd64.AppImage"
+   ```
+   *(Optional)* Use tools like [Gear Lever](https://github.com/mijorus/gearlever) or [AppImageLauncher](https://github.com/TheAssassin/AppImageLauncher) to integrate it into your desktop application launcher.
+
+#### Arch Linux / CachyOS / Manjaro
+Install the pre-built package using `pacman`:
+```bash
+sudo pacman -U lyrical-sync-0.6.1-1-x86_64.pkg.tar.zst
+```
+Or build directly from the included PKGBUILD:
+```bash
+cd packaging/arch
+makepkg -si
+```
+
+#### Debian / Ubuntu / Linux Mint / Pop!_OS (`.deb`)
+Install via `apt`:
+```bash
+sudo apt install ./"Lyrical Sync_0.6.1_amd64.deb"
+```
+Or with `dpkg`:
+```bash
+sudo dpkg -i "Lyrical Sync_0.6.1_amd64.deb"
+sudo apt-get install -f
+```
+
+#### Fedora / RHEL / openSUSE (`.rpm`)
+Install via `dnf`:
+```bash
+sudo dnf install ./"Lyrical Sync-0.6.1-1.x86_64.rpm"
+```
+Or on openSUSE with `zypper`:
+```bash
+sudo zypper install ./"Lyrical Sync-0.6.1-1.x86_64.rpm"
+```
+
+> **Linux System Requirements**
+>
+> Ensure WebKit2GTK and GStreamer multimedia plugins are installed on your distribution:
+> - **Arch / CachyOS**: `sudo pacman -S webkit2gtk-4.1 gst-plugins-base gst-plugins-good gst-plugins-bad libsecret`
+> - **Debian / Ubuntu**: `sudo apt install libwebkit2gtk-4.1-0 gstreamer1.0-plugins-base gstreamer1.0-plugins-good gstreamer1.0-plugins-bad libsecret-1-0`
+> - **Fedora**: `sudo dnf install webkit2gtk4.1 gstreamer1-plugins-base gstreamer1-plugins-good gstreamer1-plugins-bad-free libsecret`
 
 ### macOS
 
