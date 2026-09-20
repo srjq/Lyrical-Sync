@@ -1,195 +1,117 @@
-# Lyrical Sync
+<div align="center">
 
-`.lrc`（LRC）歌詞ファイルを作成・同期・編集するデスクトップアプリ
+# 🎵 Lyrical Sync
 
-[English](README.md) | [한국어](README.ko.md)
+**`.lrc`（LRC）歌詞ファイルを作成・同期・編集するための高速でモダンなデスクトップアプリ。**
 
-![main](img/main_ja.png)
+[English](README.md) • [한국어](README.ko.md)
 
-![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20macOS%20%7C%20Windows-blue)
-![Version](https://img.shields.io/badge/version-0.6.1-green)
-![Tauri](https://img.shields.io/badge/Tauri-v2-24C8D8)
-![React](https://img.shields.io/badge/React-19-61DAFB)
-![TypeScript](https://img.shields.io/badge/TypeScript-5.8-3178C6)
+[![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20macOS%20%7C%20Windows-blue?style=flat-square)](https://github.com/srjq/Lyrical-Sync/releases)
+[![Version](https://img.shields.io/badge/version-0.6.1-green?style=flat-square)](https://github.com/srjq/Lyrical-Sync/releases/tag/v0.6.1)
+[![License](https://img.shields.io/badge/license-MIT-purple?style=flat-square)](LICENSE)
 
----
+<br/>
 
-## 機能
+![Lyrical Sync Preview](img/main_ja.png)
 
-### 編集 & 同期
-- **波形 & シークバー** — Wavesurfer.js で音声を可視化し、記録した行は波形上に**クリック可能なマーカー**として表示されます。波形表示と、ホバーツールチップ・ドラッグシーク・残り時間トグルを備えたシークバーを切り替えできます。
-- **リアルタイム記録** — `Space` でアクティブな行に現在の再生位置を記録し、自動的に次の行へ進みます。再生・記録キーは**すべて再設定可能**です。
-- **文字/単語単位の同期（Enhanced LRC）** — 文字ごとに時刻を入力する専用モード：文字の上をドラッグすると**現在の再生位置**で「塗る」ように記録され、ズーム可能な波形スクラブレーン・文字ごとのタイムマーカー・キーボード微調整・プレビューのカラオケ塗りに対応します。A2 `<mm:ss.xx>` タグまたは通常 LRC で保存します。
-- **行ツール** — 行の複製、上の行と結合、分割（`Shift+Enter`、カーソル位置）、**ドラッグで並べ替え** — すべて取り消し可能。
-- **複数選択 & 一括操作** — `Shift`/`Ctrl`+クリックで範囲・個別選択し、一括で削除・シフト・タイムスタンプ消去。
-- **タイムスタンプツール** — 一括**オフセット**、**区間シフト**、**倍率**（テンポ/バージョンの不一致に合わせて全タイムスタンプを伸縮）。
-- **検証 & 統計** — 完成度の表示＋問題リスト（未入力・重複・順序エラーのタイムスタンプ）。問題をクリックするとその行へジャンプ。
-- **プレビュー** — 全画面カラオケプレビュー。自動スクロールのハイライト、行クリックでシーク、インラインのタイムスタンプ編集、文字単位のカラオケ塗り。
-- **曲メタデータ** — タイトル・アーティスト・アルバム・作成者・オフセットおよび未知の LRC タグを編集（保持）。音声を開くと、ファイルのタグ（ID3 / Vorbis / MP4）から**空の項目を自動入力**します。
-- **自動復元** — 作業中の内容をスナップショットとして保持し、予期せず終了しても（保存先がなくても）再起動時に復元を提案します。
-
-### AI 自動同期
-- **自動整列** — [ctc-forced-aligner](https://github.com/MahmoudAshraf97/ctc-forced-aligner) と MMS-300M モデルで歌詞行を音声に整列します（**1130 言語**、日本語・英語・韓国語を含む）。
-- **ボーカル分離** — 整列前に [Demucs](https://github.com/facebookresearch/demucs) でボーカルを分離し精度を高められます（任意）。
-- **ボーカル活動検出（VAD）** — 間奏のあとボーカルが再開する地点に段落区切りのタイムスタンプを精密配置し、無ボーカル区間に誤って置かれた行の信頼度を下げて誤整列を見つけやすくします。
-- **信頼度表示** — 整列した各行を信頼度に応じて色分けし、不確実な結果が一目で分かります。
-- **使用項目の選択** — ボーカル分離・VAD の使用可否を整列ごとに切り替え。
-- **内蔵 Python ランタイム** — アプリが独自の Python 環境をダウンロード・管理するため、システムの Python は不要です。
-
-### Spotify & YouTube
-- **Spotify モード** — アカウントを接続（PKCE OAuth）して再生を制御し、現在再生中の曲に合わせて歌詞を同期します。再生デバイス選択と「Spotify で開く」リンクを提供。リフレッシュトークンは OS のキーチェーンに保存されます。
-- **YouTube モード** — yt-dlp（アプリがダウンロード・管理）で YouTube の URL から音声を直接読み込みます。
-
-### 読み込み / 書き出し
-- **開く** — LRC、SRT ファイル（ドラッグ＆ドロップ対応）。
-- **書き出し** — LRC（通常または Enhanced LRC）、SRT、**WebVTT**、**ASS**（カラオケ）。
-- **LRCLIB** — 公開データベース [LRCLIB](https://lrclib.net/) から歌詞を取得し、同期歌詞を投稿できます。
-
-### 一般
-- **多言語 UI** — 韓国語、英語、日本語。
-- **ショートカットのカスタマイズ** — 再生・記録キーを競合検出付きで再設定（設定 → ショートカット）。
-- **トースト通知** — 保存・エラー・AI 完了・ダウンロードなどを明確にフィードバック。
-- **表示オプション** — UI スケール（70%〜130%）と歌詞のフォントサイズ調整。
-- **自動保存 & 更新確認** — 保存先が決まっている変更を自動保存し、新しいリリースがあれば通知します。
-- **対応音声フォーマット** — MP3、FLAC、WAV、OGG、Opus、M4A/AAC、AIFF/AIF。
-  - Linux（WebKitGTK）：MP3、FLAC、WAV、OGG、Opus は GStreamer を介してネイティブ対応。AIFF/AIF は Rust バックエンドが自動的に WAV へトランスコード。
-  - macOS（WKWebView）：すべてのフォーマットをネイティブ対応。
-  - Windows（WebView2）：AIFF/AIF は Rust バックエンドが自動的に WAV へトランスコード。
+</div>
 
 ---
 
-## インストール
+## ✨ 主な機能
 
-### Linux
-
-お使いのディストリビューションに合わせたパッケージを [Releases](../../releases) ページからダウンロードしてください：
-
-#### AppImage（汎用 / ポータブル）
-インストール不要で、ほぼすべての最新 64bit Linux ディストリビューションで動作します：
-1. `Lyrical Sync_0.6.1_amd64.AppImage` をダウンロードします。
-2. 実行権限を付与して起動します：
-   ```bash
-   chmod +x "Lyrical Sync_0.6.1_amd64.AppImage"
-   ./"Lyrical Sync_0.6.1_amd64.AppImage"
-   ```
-
-#### Arch Linux / CachyOS / Manjaro
-`pacman` でビルド済みパッケージをインストール：
-```bash
-sudo pacman -U lyrical-sync-0.6.1-1-x86_64.pkg.tar.zst
-```
-または同梱の PKGBUILD から直接ビルド：
-```bash
-cd packaging/arch
-makepkg -si
-```
-
-#### Debian / Ubuntu / Linux Mint / Pop!_OS（`.deb`）
-`apt` でインストール：
-```bash
-sudo apt install ./"Lyrical Sync_0.6.1_amd64.deb"
-```
-または `dpkg`：
-```bash
-sudo dpkg -i "Lyrical Sync_0.6.1_amd64.deb"
-sudo apt-get install -f
-```
-
-#### Fedora / RHEL / openSUSE（`.rpm`）
-`dnf` でインストール：
-```bash
-sudo dnf install ./"Lyrical Sync-0.6.1-1.x86_64.rpm"
-```
-openSUSE（`zypper`）：
-```bash
-sudo zypper install ./"Lyrical Sync-0.6.1-1.x86_64.rpm"
-```
-
-> **Linux システム要件**
->
-> 必要に応じて WebKit2GTK および GStreamer プラグインがインストールされていることを確認してください：
-> - **Arch / CachyOS**: `sudo pacman -S webkit2gtk-4.1 gst-plugins-base gst-plugins-good gst-plugins-bad libsecret`
-> - **Debian / Ubuntu**: `sudo apt install libwebkit2gtk-4.1-0 gstreamer1.0-plugins-base gstreamer1.0-plugins-good gstreamer1.0-plugins-bad libsecret-1-0`
-> - **Fedora**: `sudo dnf install webkit2gtk4.1 gstreamer1-plugins-base gstreamer1-plugins-good gstreamer1-plugins-bad-free libsecret`
-
-### macOS
-
-[Releases](../../releases) ページから最新の `.dmg` インストーラーをダウンロードし、Lyrical Sync をアプリケーションフォルダにドラッグします。
-
-> **未署名アプリの警告**
->
-> インストール後、ターミナルで次のコマンドを実行してください：
->
-> ```bash
-> xattr -cr /Applications/Lyrical\ Sync.app
-> ```
->
-> その後、通常どおりアプリを開きます。
-
-### Windows
-
-[Releases](../../releases) ページから最新の `.msi` または `_x64-setup.exe` インストーラーをダウンロードして実行します。
-
-> **SmartScreen の警告**
->
-> Windows Defender SmartScreen が「不明な発行元」の警告を表示した場合は、**詳細情報** → **実行** をクリックします。
+- ⏱️ **リアルタイム & 単語単位の同期** — <kbd>Space</kbd> キーで再生に合わせて同期、文字単位のタイミング（Enhanced LRC / A2）も直感的にペイント可能。
+- 🤖 **AI 自動同期** — MMS-300M（1,100以上の言語に対応）と Demucs によるボーカル分離・VAD 検出を活用した自動アライメント。
+- 🎧 **Spotify & YouTube 連携** — Spotify アプリの再生とリアルタイム同期、または YouTube URL から音声を直接読み込み。
+- 🌊 **波形表示 & ビジュアル編集** — ドラッグ操作可能なマーカー付き波形、微調整コントロール、リアルタイムカラオケプレビュー。
+- 🔄 **スマートな編集機能** — 一括オフセット、テンポ伸縮、行の分割・結合、アンドゥ/リドゥ、ドラッグ＆ドロップによる並び替え。
+- 🌐 **LRCLIB 対応 & 多様な書き出し** — LRCLIB からの歌詞検索・投稿に対応。LRC、Enhanced LRC、SRT、WebVTT、ASS 出力をサポート。
 
 ---
 
-## ショートカット
+## 🚀 インストール
 
-既定の割り当て — すべて **設定 → ショートカット** で再設定できます。
+お使いの OS に合わせた最新ビルドを **[Releases](https://github.com/srjq/Lyrical-Sync/releases)** ページからダウンロードしてください：
 
-| キー | 動作 |
-|------|------|
-| `1` | -5 秒スキップ |
-| `2` | -1 秒スキップ |
-| `3` | 再生 / 一時停止 |
-| `4` | +1 秒スキップ |
-| `5` | +5 秒スキップ |
-| `6` | 停止して 0:00 へ |
-| `Space` | 現在行を記録 + 次の行へ |
-| `Backspace` | 前の行へ |
-| `Enter` | 下に新しい行を挿入（編集中） |
-| `Shift+Enter` | カーソル位置で行を分割 |
-| `Ctrl/⌘ + Z` / `Shift+Z` | 取り消し / やり直し |
-| `Ctrl/⌘ + F` | 検索 & 置換 |
+### 🐧 Linux
 
-> 入力欄にフォーカスがある間はショートカットが無効になります。
+| 形式 | 対象ディストリビューション | インストールコマンド |
+|---|---|---|
+| **AppImage** | 汎用（主要な 64bit Linux） | `chmod +x *.AppImage && ./*.AppImage` |
+| **.pkg.tar.zst** | Arch Linux / CachyOS / Manjaro | `sudo pacman -U lyrical-sync-*.pkg.tar.zst` |
+| **.deb** | Ubuntu / Debian / Linux Mint | `sudo apt install ./*.deb` |
+| **.rpm** | Fedora / openSUSE / RHEL | `sudo dnf install ./*.rpm` |
+
+<details>
+<summary><b>Linux の前提パッケージ</b></summary>
+
+WebKit2GTK および GStreamer プラグインがインストールされていることを確認してください：
+- **Arch / CachyOS**: `sudo pacman -S webkit2gtk-4.1 gst-plugins-base gst-plugins-good gst-plugins-bad libsecret`
+- **Debian / Ubuntu**: `sudo apt install libwebkit2gtk-4.1-0 gstreamer1.0-plugins-base gstreamer1.0-plugins-good libsecret-1-0`
+- **Fedora**: `sudo dnf install webkit2gtk4.1 gstreamer1-plugins-base gstreamer1-plugins-good libsecret`
+</details>
+
+### 🍏 macOS
+
+[Releases](https://github.com/srjq/Lyrical-Sync/releases) から `.dmg` をダウンロードし、アプリケーションフォルダへドラッグします。
+
+<details>
+<summary><b>未署名アプリの警告について（Gatekeeper）</b></summary>
+
+セキュリティ警告が表示される場合は、ターミナルで一度だけ以下を実行してください：
+```bash
+xattr -cr /Applications/Lyrical\ Sync.app
+```
+</details>
+
+### 🪟 Windows
+
+[Releases](https://github.com/srjq/Lyrical-Sync/releases) から `.msi` または `_x64-setup.exe` をダウンロードしてインストーラーを実行します。
+
+<details>
+<summary><b>SmartScreen の警告について</b></summary>
+
+Windows Defender SmartScreen が「不明な発行元」を表示した場合は、**詳細情報** → **実行** をクリックしてください。
+</details>
 
 ---
 
-## 技術スタック
+## ⌨️ ショートカット
 
-| 役割 | 技術 | バージョン |
-|------|------|-----------|
-| デスクトップフレームワーク | Tauri | v2 |
-| フロントエンド | React + TypeScript | React 19, TS 5.8 |
-| スタイリング | Tailwind CSS + @tailwindcss/vite | v4 |
-| 状態管理 | Zustand | v5 |
-| 波形 | Wavesurfer.js | v7 |
-| AI 整列 | ctc-forced-aligner + MMS-300M | — |
-| ボーカル分離 | Demucs htdemucs | — |
-| 音声タグ / トランスコード | lofty + Symphonia (Rust) | — |
-| ファイル I/O | @tauri-apps/plugin-fs | v2 |
-| ダイアログ | @tauri-apps/plugin-dialog | v2 |
+すべてのキー割り当ては **設定 → ショートカット** からいつでも変更できます。
+
+| キー | 動作 | キー | 動作 |
+|:---|:---|:---|:---|
+| <kbd>Space</kbd> | 現在行を記録して次へ | <kbd>3</kbd> | 再生 / 一時停止 |
+| <kbd>Backspace</kbd> | 前の行へ移動 | <kbd>1</kbd> / <kbd>5</kbd> | -5秒 / +5秒スキップ |
+| <kbd>Enter</kbd> | 下に新しい行を挿入 | <kbd>2</kbd> / <kbd>4</kbd> | -1秒 / +1秒スキップ |
+| <kbd>Shift</kbd>+<kbd>Enter</kbd> | カーソル位置で行を分割 | <kbd>6</kbd> | 停止して 0:00 へ戻す |
+| <kbd>Ctrl/⌘</kbd>+<kbd>Z</kbd> | 元に戻す / やり直す | <kbd>Ctrl/⌘</kbd>+<kbd>F</kbd> | 検索と置換 |
 
 ---
 
-## 開発をはじめる
-
-### 前提条件
-
-- [Node.js](https://nodejs.org/) 18+
-- [Rust](https://www.rust-lang.org/tools/install)（stable）
-- Tauri CLI の依存関係 — [Tauri 前提条件](https://v2.tauri.app/start/prerequisites/) を参照
+## 🛠️ 開発
 
 ```bash
+# クローンと依存関係のインストール
+git clone https://github.com/srjq/Lyrical-Sync.git
+cd Lyrical-Sync
 npm install
-npm run tauri dev   # 開発
-npm run tauri build # 本番ビルド
-npx tsc --noEmit    # 型チェック
-npm test            # フロントエンド単体テスト
+
+# 開発サーバーの起動
+npm run tauri dev
+
+# プロダクションビルド
+npm run tauri build
+
+# テスト実行
+npm test
 ```
 
-ビルド成果物は `src-tauri/target/release/bundle/` に出力されます。
+---
+
+<div align="center">
+
+ライセンス: [MIT](LICENSE) • 原作者: [Tsukimori Ahri](https://github.com/AHRI2nd)
+
+</div>
