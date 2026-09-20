@@ -12,6 +12,9 @@ dist-ssr
 src-tauri/target
 src-tauri/gen/schemas
 *.pkg.tar.zst
+*.tar.gz
+packaging/arch/src/
+packaging/arch/pkg/
 
 # Logs
 logs

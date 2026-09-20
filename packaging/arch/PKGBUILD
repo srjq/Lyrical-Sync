@@ -5,7 +5,7 @@ pkgver=0.6.1
 pkgrel=1
 pkgdesc="Desktop app for creating, syncing, and editing .lrc lyric files"
 arch=(x86_64)
-url="https://github.com/AHRI2nd/Lyrical-Sync"
+url="https://github.com/srjq/Lyrical-Sync"
 license=(MIT)
 depends=(
   cairo
@@ -25,21 +25,10 @@ makedepends=(
   nodejs
   npm
 )
-source=(
-  "$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz"
-  "linux-support.patch"
-)
-sha256sums=(
-  "e9d5318a70944e0a19a0679fe93fd90c587f4dfc18a9231c547d346eddd7fad0"
-  "3434e24b982a2d5289067428d6c4e0aaaf45c57af4da7510765d2c120a3874fd"
-)
+source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz")
+sha256sums=("41c8fb8614ebb678f599d1b97f250455b25fddc7db4fae72e5f073ab97aa88ef")
 
 options=(!lto)
-
-prepare() {
-  cd "Lyrical-Sync-$pkgver"
-  patch -Np1 -i "$srcdir/linux-support.patch"
-}
 
 build() {
   cd "Lyrical-Sync-$pkgver"
