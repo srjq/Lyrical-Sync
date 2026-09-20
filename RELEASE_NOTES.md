@@ -90,7 +90,7 @@ xattr -cr /Applications/Lyrical\ Sync.app
 
 ```text
 818e03fcb76953e80a887c01ec6ee8b428f5e8ff5082690841c2a65c515ba474  latest.json
-234d6d157c4e9375f15bf2768ecf5dbc33b3011f0dd44f9df0c10d1da68acb74  lyrical-sync-0.6.1-1-x86_64.pkg.tar.zst
+b15d919e55f97d715b241065300280a058c1a26986834f527f7fae426b4d3b21  lyrical-sync-0.6.1-1-x86_64.pkg.tar.zst
 f25f55e2321822bab84beedabcb4a3b6f0d7ccc5846cd28460df1bee6919bba8  Lyrical Sync-0.6.1-1.x86_64.rpm
 dd00ccd06afc282dd345f2a03fa8ea942fcf3361a193e7ac71729e54bc84bd1b  Lyrical.Sync_0.6.1_aarch64.dmg
 f3f4b7ce384ecc72d4799da70ae38e9a67f65a92f91a3820757144b1468f50b1  Lyrical Sync_0.6.1_amd64.AppImage

@@ -42,7 +42,7 @@ build() {
 
   npm ci
   npm run build
-  cargo build --release --locked --manifest-path src-tauri/Cargo.toml
+  cargo build --release --locked --manifest-path src-tauri/Cargo.toml --features tauri/custom-protocol
 }
 
 package() {
