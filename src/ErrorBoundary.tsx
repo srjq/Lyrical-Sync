@@ -14,7 +14,7 @@ export class ErrorBoundary extends Component<Props, State> {
     if (this.state.error) {
       return (
         <div style={{ padding: 24, fontFamily: "monospace", background: "#1c1c1e", color: "#ff453a", height: "100vh" }}>
-          <h2 style={{ marginBottom: 12 }}>렌더링 에러</h2>
+          <h2 style={{ marginBottom: 12 }}>Application Error</h2>
           <pre style={{ whiteSpace: "pre-wrap", fontSize: 13 }}>
             {this.state.error.message}
             {"\n\n"}

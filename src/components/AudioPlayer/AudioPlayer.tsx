@@ -173,11 +173,16 @@ export function AudioPlayer({ onSpotifySearch, onSpotifyNoClientId }: AudioPlaye
     ws.on("finish", () => {
       if (isLoopingRef.current) {
         ws.seekTo(0);
-        ws.play();
+        ws.play().catch(() => {});
       } else {
         setIsPlayingLocal(false);
         if (!inService()) setIsPlaying(false);
       }
+    });
+    ws.on("error", (err) => {
+      console.warn("WaveSurfer error:", err);
+      setIsPlayingLocal(false);
+      if (!inService()) setIsPlaying(false);
     });
 
     wsRef.current = ws;
@@ -185,11 +190,22 @@ export function AudioPlayer({ onSpotifySearch, onSpotifyNoClientId }: AudioPlaye
   }, [setCurrentTime]);
 
   useEffect(() => {
-    audioControls.togglePlay = () => wsRef.current?.playPause();
-    audioControls.pause = () => wsRef.current?.pause();
+    audioControls.togglePlay = () => {
+      const ws = wsRef.current;
+      if (!ws || !isAudioReady) return;
+      ws.playPause().catch((err) => {
+        if (err?.name === "AbortError") return;
+        console.warn("audioControls.togglePlay error:", err);
+      });
+    };
+    audioControls.pause = () => {
+      try {
+        wsRef.current?.pause();
+      } catch {}
+    };
     audioControls.skip = (delta: number) => {
       const ws = wsRef.current;
-      if (!ws) return;
+      if (!ws || !isAudioReady) return;
       if (useLrcStore.getState().loopLineId) useLrcStore.getState().setLoopLine(null);
       const d = ws.getDuration();
       if (!d) return;
@@ -200,20 +216,22 @@ export function AudioPlayer({ onSpotifySearch, onSpotifyNoClientId }: AudioPlaye
       const ws = wsRef.current;
       if (!ws) return;
       if (useLrcStore.getState().loopLineId) useLrcStore.getState().setLoopLine(null);
-      ws.pause();
-      ws.seekTo(0);
+      try {
+        ws.pause();
+      } catch {}
+      if (isAudioReady) ws.seekTo(0);
       setCurrentTimeLocal(0);
       setCurrentTime(0);
     };
     audioControls.getPeaks = () => peaksRef.current;
     audioControls.seekTo = (seconds: number) => {
       const ws = wsRef.current;
-      if (!ws) return;
+      if (!ws || !isAudioReady) return;
       const d = ws.getDuration();
       if (!d) return;
       ws.seekTo(Math.max(0, Math.min(1, seconds / d)));
     };
-  });
+  }, [isAudioReady, setCurrentTime]);
 
   const blobUrlRef = useRef<string | null>(null);
 
@@ -367,7 +385,14 @@ export function AudioPlayer({ onSpotifySearch, onSpotifyNoClientId }: AudioPlaye
     };
   }, [showSpectrogram]);
 
-  const togglePlay = useCallback(() => wsRef.current?.playPause(), []);
+  const togglePlay = useCallback(() => {
+    const ws = wsRef.current;
+    if (!ws || !isAudioReady) return;
+    ws.playPause().catch((err) => {
+      if (err?.name === "AbortError") return;
+      console.warn("WaveSurfer playPause error:", err);
+    });
+  }, [isAudioReady]);
 
   const skip = useCallback((delta: number) => {
     const ws = wsRef.current;
@@ -501,6 +526,7 @@ export function AudioPlayer({ onSpotifySearch, onSpotifyNoClientId }: AudioPlaye
       <TransportControls
         t={t}
         audioPath={audioPath}
+        isAudioReady={isAudioReady}
         isPlaying={isPlaying}
         togglePlay={togglePlay}
         skip={skip}

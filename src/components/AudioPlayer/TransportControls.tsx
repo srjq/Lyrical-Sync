@@ -9,12 +9,13 @@ import {
 // Playback control row: Stop (left), Skip/Play (center), More (right: loop, markers, spectrogram, speed).
 // Owns the "More" popover open state and outside click detection.
 export function TransportControls({
-  t, audioPath, isPlaying, togglePlay, skip, stopAndReset,
+  t, audioPath, isAudioReady = true, isPlaying, togglePlay, skip, stopAndReset,
   isLooping, onToggleLoop, showMarkers, onToggleMarkers, showSpectrogram, onToggleSpectrogram,
   playbackRate, speedMin, speedMax, onSpeedDown, onSpeedUp,
 }: {
   t: Translations;
   audioPath: string | null;
+  isAudioReady?: boolean;
   isPlaying: boolean;
   togglePlay: () => void;
   skip: (delta: number) => void;
@@ -58,7 +59,7 @@ export function TransportControls({
         <CtrlBtn onClick={() => skip(-1)} title={t.tooltipSkipBack1}>
           <TriLeftIcon /><span className="text-[10px] font-bold ml-0.5">1</span>
         </CtrlBtn>
-        <CtrlBtn onClick={togglePlay} disabled={!audioPath} title={t.tooltipPlayPause} accent>
+        <CtrlBtn onClick={togglePlay} disabled={!audioPath || !isAudioReady} title={t.tooltipPlayPause} accent>
           {isPlaying ? <PauseIcon /> : <PlayIcon />}
         </CtrlBtn>
         <CtrlBtn onClick={() => skip(1)} title={t.tooltipSkipFwd1}>
